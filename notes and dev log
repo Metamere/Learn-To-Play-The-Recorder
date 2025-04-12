@@ -1,0 +1,224 @@
+By Metamere
+11-11-2022
+Created for SableRaph's Weekly Creative Coding Challenge (#WCCChallenge), Theme = Interactive
+
+Adapted from a script I created in POV-Ray (a raytracing program) in August of 2007, 
+from around when I started playing recorder after I gave up on repairing my cheap clarinet again.
+I used those reference charts I generated to learn how to play by ear, 
+to quickly identify the scale and key of songs I was playing along with, 
+and to improvise in any key of many different scales on my soprano, then alto, and tenor recorders.
+It made learning and becoming skilled fun and easy. No need to buy lesson books, song books, etc.,
+like I had done with clarinet over the two previous years. That method was a more difficult, expensive, and restrictive.
+It's so freeing to just find music you like, listen, figure out the key, and play along. 
+Then eventually, you'll be able to play along with or provide accompaniment to any song.
+I was able to quickly advance my playing ability far beyond the point I did with the clarinet,
+or with playing the tuba over eight years with school bands.
+I shared those original charts on my old, now defunct, blog, 
+but I wanted to get this out there into the wider world
+because I believe this method can be a very valuable learning tool.
+The empty space in the current layout will be for sheet music notation display, once I get that worked out.
+It will be a useful tool for me as well to bring my sight reading ability up to level.
+
+
+-- UPDATES --
+
+11-15-22 
+	-Cleaner interface. Can condense to only scale notes. Works on mobile! Waveform visualization
+11-18-22 
+	-Better and more controls, debugged features. 
+	-Randomized key and scale now move along a shuffled sequence, and reshuffle at end, 
+	rather than complete random which can have more frequent repeats. 
+	-Can toggle to previous instrument while holding the key constant or the fingering constant. 
+	-Added a way to play scales, shuffle sequence.
+	-can select key by clicking on the note name area
+11-22-22 
+	-Added more weird scales. Complete on that front. 
+	-Figured out how to generate ten different practice scale patterns. 
+	-Worked out how to shift octaves when it goes too high or low, and set up ability to play two octave patterns.
+  -Added a scale note indicator (helpful when the mode is shifted)
+	-better non-standard tuning scale division behavior
+11-23-22 
+	-four more scale patterns. Will add pattern visualization for them soon.
+11-27-22 
+	-After clicking to select key, drag left or right to shift mode, or 
+	click on active key again to set mode to first mode (though the mode reset doesn't work properly on mobile). 
+	-added Jazz minor scale and modes. 
+	-made it so that when off (grey) notes are hidden, the note width increases. 
+12-1-22 
+	-Added an interval step visualizer for when the chart is condensed and fingering is hidden ("stylophone mode")
+	made it so that the mode won't change during playing if you move over the top area during a drag. Have to start in the top area for that.
+12-11-22 
+	-Updated controls
+	-Added a sequence visualizer, making it easier to select sequences to practice and to understand the patterns. 
+	It helped me to make all the patterns consistent and the proper length for the different scale lengths (5,6,7,8)
+	-Changed the way sequences are generated to include the note lengths in an array. 
+	-Now the note lengths can be varied when the sequence is shuffled 
+	(although that functionality still needs work so I disabled it)
+12-14-22 
+	-Added a drone function.
+	-Made it so that certain elements are highlighted when active or changed from the default.
+	-Set up button style using CSS.
+12-16-22 
+	-Added information field, with info on each scale. 
+	-Worked out a way to display the updated note patterns during mode shifts.
+	-Finally got note drawing conditions worked out so it minimizes redraws and resource usage, also less flicker
+	-toggling fingering display during scale playing will no longer cause it to restart scale.
+	-Fixed lots of bugs from issues I caused by changing the way things worked.
+12-17-22 
+	-merged mode names lists into scales array, figured out how to access the scale object directly.
+	-update to waveform display.
+	-highlighted note covered fingering locations increase size slightly, changed it to darken instead of lighten,
+	thus increasing contrast, making it easier to see, rather than harder. Makes perfect sense in hindsight.
+12-18-22
+	-Added more information on scales, modes, etc., and refined the info display window.
+	-Got the Major and minor key signature names set up, along with the number of sharps and flats! Whew.
+	-Drone frequency now updates automatically when changing tuning. 
+	-Frequency resets to default with a double click on the button, which is useful when exploring if a song is tuned differently.
+	-restructured the alt info to contain nested arrays so that each mode can have alt info added.
+12-19-22
+	-Actually key signatures weren't set up properly for many scales that didn't follow the same structure. 
+	Was able to devise a rule to prevent duplicate note letters, which is actually the standard rule for them.
+	-S key no longer does just a screen capture. It saves a large composite chart of the currently active scale mode.
+	The chart includes all 12 keys! Does highest resolution, lowest file size with the display zoom at 100%.
+	-Mode selection behaves slightly differently now. Can select a new key for a mode directly, instead of having to
+	deal with an offset. The dragging of the mode doesn't start until you cross past the orange highlighted tonic note.
+	For scales with limited modes (like the tritone scale), you can select a new key and mode at the same time by
+	dragging over to another non-root note. Pretty cool. 
+	Still has some issues in condensed mode, though randomize buttons work fine there.
+	Added more information for alternate mode names, corrected some errors in info.
+	-Revamped the note name/color section for better readability, more stable appearance.
+		-colors for all 12 notes, not just the seven natural notes.
+		-sharp or flat note labels are always at top of box, rather than sharps high, flats low.
+		Less jumpy, and matches piano layout.
+		-Inactive note labels are greyed out to better differentiate from the active notes.
+12-22-22
+	-Got that CHART OUTPUT feature working! Now pressing S will save a chart of the current scale in all 12 keys.
+	It will keep the current display type for them. Still need to fully test.
+	-had to fork to new sketch since the original got corrupted or something and I can't save any changes to it.
+	-updated colors a bit, set up different appearance for C major, similar keys.
+	-Got the key signatures working better for edge cases.
+12-23-22
+	-I think I was doing key signatures wrong for the non diatonic scales, so I gave up on that for now. 
+	Too much of a time sink, and I don't have a full understanding of the rules.
+	-changed buttons in upper left corner which were too small on mobile to be hidden until the new button there
+	is pressed. This turns on a miscellaneous set of buttons, including new volume control buttons, 
+	and a save chart button. Though the saving of the chart doesn't look good at all on mobile due to the
+	pixel density issues during getting and saving images that p5.js has, so I turned that button off there.
+	Need to figure that issue out, for this and for future projects.
+12-24-22
+	-Thanks to Dave Pagurek from the Birb's Nest Discord group for the help on the chart generation
+	image creation function. It now works properly on zoomed monitors and phones! 
+12-25-22
+	-updated waveform graphics to make it a bit nicer looking.
+12-26-22
+	-rearranged the buttons, set up sub-menu of a sort for sequence selection and options.
+	-added a sequence reversal control
+	-pattern representation is now copied onto the saved full chart.
+	-scale up, scale down buttons
+	-updated slider, radio, select appearance with CSS. Still needs tweaks.
+12-28-22	
+	-changed note colors slightly to increase contrast, which improves readability, especially for if a chart is printed in B&W
+	-added Major Hexatonic scale, removed redundant bebop scales (bebop harmonic minor and bebop minor are just modes of Bebop Major).
+	-got the scale minor/major switch for key signatures working better
+	-the sequence reversal/direction lock control is more intuitive and 
+	will maintain setting when switching sequences or toggling play off and on.
+	-Added a relative/parallel switch for the mode shifting, and manual mode shift buttons for when
+	clicking and dragging is more difficult, or for when the chart is condensed.
+	EXCEPT, it doesn't work properly to do parallel mode shifts when condensed. 
+	Since it requires a key shift, it switches to uncondensed which screws up note positions
+	so I restricted the parallel shift behavior to only when it's not condensed, for now.
+	I'm sure there's a way to make it work, but the current structure makes that exceedingly difficult.
+	$ALSO, the random mode function doesn't keep it in parallel mode, 
+	since it's not using the mode increase or decrease functions, just selecting them directly, so it doesn't shift the key.
+	$Could possibly use an adapted mode increase function with it, that takes the mode shift amount as an input.
+	-Rearranged misc buttons for better usability in mobile mode.
+12-29-22
+	-Updated interval representation in stylo mode (condensed, fingering hidden) to match the colors in the pattern display.
+	-Worked out a sheet music note representation scheme! I can make some calcs more efficient, but it works for all instruments!
+	*For now, it works properly for major and minor scales as well as some others that are subsets of them,
+	*but has issues others regarding the use of flats and sharps. Should be able to do both, even within the same key if necessary.
+	-adjusted text arrangement in footer of saved full charts. 
+	-Fixed a couple of bugs related to key selection, etc.
+12-30-22
+	-Random mode now works with parallel mode shifts. Made the random mode function more efficient at the same time.
+	-moved tuning button into the miscellaneous drawer. Changed the way controls are hidden and shown to accommodate.
+	-Added a scale history tracker, and previous scale / next scale buttons. 
+	Can be used to quickly compare different scales. 
+12-31-22 
+	-scale history tracks mode changes as well, since those are scales too. Limited to 200 steps for undo history.
+	-tweaked key signatures so that the major and minor pentatonic and hexatonic use the major and minor key signatures. 
+	*It's pretty messy how I implemented things regarding key signatures. Needs work to clean that up. 
+	*Still need to set up combined flats and sharps for properly spelling the pitches of all the scales.
+1-2-23
+	-Darken the prev scale and next scale buttons when there is less than 2 in the history, 
+	or when it is at either end of the history.
+	*should add key changes to undo history to make scale comparisons between modes easier.
+1-4-23
+	-added Dominant Pentatonic scale.
+	-rearranged scale order so that more similar scales are next to each other in the pentatonic and hexatonic sets.
+1-5-23
+	-added hexatonic scale Raga Sarasvati, with modes of Raga Kamalamanohari, and Raga Sindhura Kafi
+	-when info is updated, the note representation now shows starting note for key, the higher octave notes, 
+	and the highest and lowest scale notes in lighter grey.
+	-debugged a bit. Allowed for setting position of debug redraw indicator with middle mouse button click. 
+	- Using that, I was able to make it so that the scale pattern only gets redrawn when it needs to be, 
+	instead of every time the sequence is updated
+	-Random sequence will activate properly now. It was getting disabled when the octaves to play or reverse mode were changed.
+	-had to debug a way to make it get the proper note based on the note index, so that the note rep would work when condensed.
+	Could be what I need to use for shifting the mode and key properly when it's condensed.
+1-6-23
+	-eliminated a bug where it would glitch out sometimes if the instrument was updated while in stylo mode. 
+	The interval indicators needed certain information that wasn't available when the notes hadn't all been created yet.
+	I also managed to make them always fill the vertical space available.
+	-When a scale has less than four modes, set it to change rand mode button text and just increase the mode (if possible). 
+2-25-23 
+	-uncommented the line of code where the generate_note_lengths() function is called. So now it can play the sequences again. 
+	I think I commented it out when I was testing the randomized sequence generator function, and just forgot to uncomment it.
+3-18-2023
+	-Switched to using the p5.js shuffle() function, rather than the custom one that I researched and implemented, 
+	since I didn't know about the built-in one. Sigh.
+3-19-23
+	-Updated to work better on desktop. Can keep in windowed view or use on portrait monitor, just hit F11 to go to fullscreen. 
+	-Waveform and label adjusts properly for any aspect ratio.
+	-Waveform amplitude adjusts properly to keep at maximum for given line weight.
+	-waveform and label is erased when turned off manually with 'w' key press.
+	-Got the local storage working! Now I just need to add some more values, such as the sequence, key, frequency, BPM. 
+	Maybe have a per instrument tuning list?
+
+8-31-23
+	-added a pitch bend capability to the stylo mode, because why not.
+	-fixed a couple of minor bugs
+		
+12-8-23
+	-Made the sketch responsive, by setting the DOM element controls to be created only at the start, 
+	and to simply reposition them when the window is resized. Now it should work properly on 
+	differenly sized mobile devices and for different browsers. 
+	It also doesn't require a manual refresh after resizing the window.
+
+3-7-24
+	-added Raga Suddha Bangala scale, and associated modes.
+
+12-10-24
+	-added delay and reverb effects, and a hidden contol on the left side over the recorder image
+	-set the effects amount into a stored values
+	-added a vibrato element to stylo mode that activates after holding a note for a while without any bend.
+	-added a fade-out effect to the waveform display and fixed some issues with that feature. 
+	-fixed the error that occurred when note count was set to less than 12, and improved that mode.
+
+12-11-24
+	-gave pitch bend a larger activation threshold, and smoothed out the transition to the bent pitch with a lerp(a, b, 0.2),
+	which will also make the pitch bending in a performance a bit smoother.
+	-fixed issues with vibrato effect.
+	-fixed signal path to allow delay to work properly.
+	-added volume adjustment based on wet/dry ratio to keep things more constant, and applied to drone volume
+	-changed drone to sawtooth oscillator from sinewave monosynth.
+
+
+To-do:
+-bug: sequence plays previous played note if you press one before playing the sequence, but only in stylo mode?
+-need to set up notation for all scales such that both flat and sharp notes can both be added where necessary
+-generate sheet music display for the scale patterns, even the shuffled ones.
+
+-Add ability to toggle alternate fingerings, for faster passages where proper pitch isn't as important as speed,
+or for individual instrument nuances or oddities (e.g. bass recorder often has some differences in fingering) 
+-On mobile, could the phone's microphone act as a tuner? The capabilities should be there.

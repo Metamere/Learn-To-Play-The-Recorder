@@ -1,0 +1,118 @@
+html,
+body {
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	-webkit-user-select: none;
+}
+canvas {
+  display: block;
+}
+/* Buttons styles start */
+button {
+    display: inline-block;
+    border: 1px;
+		border-style: solid;
+		border-radius: 4px;
+    padding: 0rem 0rem;
+    margin: 0;
+    text-decoration: none;
+    background: buttonface;
+		color: #444444;
+    font-family: sans-serif;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    text-align: center;
+    transition: background 250ms ease-in-out, transform 150ms ease;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+button:hover {
+    background: #bbbbbb;
+}
+
+/* button:focus {
+    outline: 1px solid #fff;
+    outline-offset: -5px;
+} */
+
+button:active {
+    transform: scale(0.95);
+}
+/* Button styles end */
+
+.slidecontainer {
+  width: 100%; /* Width of the outside container */
+}
+
+/* The slider itself */
+.slider {
+  -webkit-appearance: none;  /* Override default CSS styles */
+  appearance: none;
+  width: 100%; /* Full-width */
+  height: 3em; /* Specified height */
+  background: #3393d3;
+  outline: none; /* Remove outline */
+  opacity: 0.87; /* Set transparency (for mouse-over effects on hover) */
+  -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+  transition: opacity .2s;
+	border-radius: 0.5em
+}
+
+/* Mouse-over effects */
+.slider:hover {
+  opacity: .98; /* Fully shown on mouse-over */
+}
+
+/* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none; /* Override default look */
+  appearance: none;
+  width: 2.3em; /* Set a specific slider handle width */
+  height: 2.8em; /* Slider handle height */
+  background: #04AA2D; /* Green background */
+  cursor: pointer; /* Cursor on hover */
+	border-radius: 0.5em
+}
+
+.slider::-moz-range-thumb {
+  width: 2.3em; /* Set a specific slider handle width */
+  height: 2.8em; /* Slider handle height */
+  background: #04AA2D; /* Green background */
+  cursor: pointer; /* Cursor on hover */
+	border-radius: 0.5em
+}
+
+input[type=radio] {
+    border: 8px;
+    width: 25%;
+    height: 2em;
+/* 	  transform: translateX(1.6em); */
+}
+
+select {
+  -webkit-appearance: button;
+  -moz-appearance: button;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -webkit-padding-end: 2px;
+  -moz-padding-end: 2px;
+  -webkit-padding-start: 2px;
+  -moz-padding-start: 2px;
+  background-color: #E5E5FF; /* Fallback color if gradients are not supported */
+  border: 1px solid #AAA;
+  border-radius: 2px;
+  box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.1);
+  color: #555;
+  font-size: inherit;
+  margin: 0;
+  overflow: hidden;
+  padding-top: 0px;
+  padding-bottom: 0px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-indent: 4px;
+  text-align: left;
+}
