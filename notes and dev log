@@ -200,7 +200,7 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 
 12-10-24
 	-added delay and reverb effects, and a hidden contol on the left side over the recorder image
-	-set the effects amount into a stored values
+	-set the effects amount into a stored value
 	-added a vibrato element to stylo mode that activates after holding a note for a while without any bend.
 	-added a fade-out effect to the waveform display and fixed some issues with that feature. 
 	-fixed the error that occurred when note count was set to less than 12, and improved that mode.
@@ -212,6 +212,11 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 	-fixed signal path to allow delay to work properly.
 	-added volume adjustment based on wet/dry ratio to keep things more constant, and applied to drone volume
 	-changed drone to sawtooth oscillator from sinewave monosynth.
+
+10-14-25
+	- updated some scale names
+	- made the effects controls activation require a press and release in the correct area for it.
+	This means you can't accidentally activate and update it when dragging off to the left of the chart.
 
 
 To-do:

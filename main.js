@@ -284,6 +284,7 @@ function draw() {
 		pop()
 
 		if(playing){
+			push()
 			redraw_time = ~~millis()
 			noFill()
 			beginShape()
@@ -306,6 +307,7 @@ function draw() {
 				vertex(x_offset + i*map_points, neutral_axis_position + f)
 			}
 			endShape()
+			pop()
 			let unit = 'm'
 			if (wavelength < 0.1){wavelength = nf(wavelength*1000,1,0); unit = 'mm';}
 			else if (wavelength < 1){ wavelength = nf(wavelength*100,1,1); unit = 'cm';}
@@ -825,8 +827,10 @@ document.addEventListener("touchMoved", (event) => event.stopPropagation(), "tru
 // document.addEventListener("touchmove", (event) => event.preventDefault(), {passive: false}) // this prevents the sliders from working on mobile for some reason.
 
 let effects_controls = false
+let effects_controls_primed = false
 
 function input_pressed(){
+	effects_controls_primed = false
 	if(!audio_started){
 		userStartAudio()
 		audio_started = true
@@ -837,11 +841,10 @@ function input_pressed(){
 			image(img, 0, img_y, img_w, img_h)
 		} 
 		chart.mousePressed()
-	} 
+	}
 	else if(mouseY > 3.5 * U && mouseY < min(H - U, 16.5 * U)){
-		effects_controls = true
-		update_effects_controls(false)
-	} 
+		effects_controls_primed = true
+	}
 	
 	// if (in_seq_display(mouseX, mouseY)){
 	// 	if(show_info){
@@ -939,7 +942,14 @@ function input_released() {
 		storeItem("dry_wet_ratio", dry_wet_ratio)
 		if(drone_playing) play_drone()
 	}
-	else if(mouseY > chart_above && mouseY < chart_y && mouseX > chart_x && mouseX < chart_end && !(mode_mode == 'parallel' && mode_shifted) ) key_shift()
+	else if(effects_controls_primed && mouseX < chart_x && mouseY > 3.5 * U && mouseY < min(H - U, 16.5 * U)){
+		effects_controls = true
+		update_effects_controls(false)
+	}
+	else if(mouseY > chart_above && mouseY < chart_y && mouseX > chart_x && mouseX < chart_end 
+		&& !(mode_mode == 'parallel' && mode_shifted) ){
+		key_shift()
+	} 
 	starting_y = null
 	pitch_bend_amount = 0
 	bend_started = false
@@ -1075,16 +1085,13 @@ function next_scale(){
 }
 
 function keyPressed() {
-	if (key === 'z') mode_decrease()
-	if (key === 'x') mode_increase()		
-	// if (key === 'h') mode_change(int(random(1e7)))		
+	if (keyCode === LEFT_ARROW) mode_decrease()
+	if (keyCode === RIGHT_ARROW) mode_increase()
+	if (keyCode === DOWN_ARROW) scale_increase()
+	if (keyCode === UP_ARROW) scale_decrease()
 	if (key === 'c') mode_mode_switch()
-	// if (key === 'c') mode_decrease(parallel=true)
-	// if (key === 'v') mode_increase(parallel=true)	
-	// if (key === 'b') scale_decrease()
-	// if (key === 'g') chart.generate_randomized_sequence()
-	if (key === 'b') prev_scale()
-	if (key === 'n') next_scale()
+	if (key === 'z') prev_scale()
+	if (key === 'x') next_scale()
 	
 	if (key === 'l'){
 		console.log(getItem("scale_name") + ', ' + getItem("mode_shift")  + ', ' + getItem("previous_instrument") + ', ' + getItem("instrument_name"))
@@ -1105,11 +1112,7 @@ function keyPressed() {
 			rect(chart_x*1.02,chart_hy, W, H)
 			pop()
 		}
-	} 
-	// else if(key === 't'){
-		//play a middle 'C' for the duration of an 8th note
-		// synth.triggerAttackRelease("C4", "8n");
-	// } 
+	}
 	
 	if (key === 's') save_chart()	
 	if (key === 'd') debug_mode = !debug_mode
