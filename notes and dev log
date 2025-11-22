@@ -221,7 +221,8 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 11-21-25
 	- finally got the envelope for the drone working properly so it has a slower attack and release.
 	- added key, mode, sequence number, octaves to play, play direction override, 
-	repeat mode, and tempo to the saved parameters
+	repeat mode, relative/parallel mode state, condensed notes state, hidden fingering state,
+	and tempo to the saved parameters.
 	- changed play direction override controls to three buttons instead of one to make 
 	it faster and easier to control. Now you don't need to turn on reversal and wait for 
 	it to start playing in reverse to be able to lock it to reverse play mode.

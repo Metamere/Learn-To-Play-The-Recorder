@@ -8,7 +8,9 @@ let default_previous_instrument = "Alto" // for quick toggle ability. Changes du
 var default_scale_name = "Major"
 var default_mode_shift = 0
 var key_name // = "C"
-var stored_key_name, stored_mode_shift, stored_repeat_state
+var stored_key_name, stored_mode_shift, stored_repeat_state, stored_mode_mode
+var stored_condensed_notes_state, stored_hide_fingering_state, stored_display_waveform_state
+var mode_mode = 'relative'
 var octaves_to_play = 1
 var pitch_bend_semitones = 2
 var default_tuning = 440 // Hz - can vary slightly between recorders, usually in the range 440-444. 
@@ -121,9 +123,6 @@ function preload() {
 	reverb.disconnect()
 	
 	osc.connect(LPF)
-	
-	// drone_env.connect(drone)
-	// drone_env.connect(drone_LPF)
 	drone.connect(drone_LPF)
 
 	if(!effects_on){
@@ -139,14 +138,16 @@ function preload() {
 
 	img = loadImage('DSCF8169_v1.jpg') // My trusty wooden alto recorder that I bought used
 
-	// other values to save and load: waveform on/off, show/hide fingerings state, condense notes state 
-
 	tempo = lookup_item("tempo", default_tempo)
 	dir_override = lookup_item("dir_override", 0)
 	stored_repeat_state = lookup_item("repeat_state", 0)
 	stored_key_name = lookup_item("key_name", '')
 	stored_mode_shift = lookup_item("mode_shift", default_mode_shift)
 	mode_shift = stored_mode_shift
+	stored_mode_mode = lookup_item("mode_mode", mode_mode)
+	stored_condensed_notes_state = lookup_item("condensed_notes_state", false)
+	stored_hide_fingering_state = lookup_item("hide_fingering_state", false)
+	stored_display_waveform_state = lookup_item("display_waveform_state", display_waveform)
 	tuning = lookup_item("tuning", default_tuning)
 	sequence_number = lookup_item("sequence_number", default_sequence_number)
 	sequence_number = lookup_item("sequence_number", default_sequence_number)
@@ -158,36 +159,21 @@ function preload() {
 	scale_name = lookup_item("scale_name", default_scale_name)
 	diatonic = (scale_name == 'Major' || scale_name == 'natural minor' ||
 		scale_name == 'Major Hexatonic' || scale_name == 'Major Pentatonic' || scale_name == 'minor pentatonic')
-	// if(mode_shift !== default_mode_shift){
-	// 	mode_shift = lookup_item("mode_shift", default_mode_shift)
-	// }
 	scale_obj = scales_arr.find(x => x.name === scale_name)
 	scale_pattern = scale_obj.pattern
 	pixelDensity(displayDensity())
 	density = pixelDensity() // to see what the actual pixel density is.
-	// console.log(`density: ${density}`);
 }
 
 function lookup_item(lookup_key, default_value){
-	// let lookup_data
-	// try {
+
 	let	lookup_data = getItem(lookup_key);
-	// } catch (error) {
-	// 	console.error(error);
-	// 	console.log("error = " + error)
-	// 	storeItem(lookup_key, default_value)
-	// 	return default_value
-	// }
 	if (lookup_data === null){
 		storeItem(lookup_key, default_value)
 		lookup_data = default_value
 	}
 	
 	return lookup_data
-// let lookup_data = getItem(lookup_key);
-// 	// console.log(lookup_data)
-//   if (lookup_data !== null) return lookup_data 
-// 	else return default_value
 }
 
 function setup(initial=true) {
@@ -226,31 +212,11 @@ function setup(initial=true) {
 		L = W 
 	}
 
-	// const M = U * (0.4 - 0.15 * (octaves_to_play - 1))
-	// const x1 = chart_x2 - 14 * U
-	// const x2 = chart_x2
-	// const y1 = 1 * U
-	// const y2 = chart_y - 1.565 * U
-		
-	// seq_display.x0 = x1
-	// seq_display.y0 = y1
-	// seq_display.x1 = x1 + M
-	// seq_display.y1 = y1 + M
-	// seq_display.x2 = x2 - M
-	// seq_display.y2 = y2 - M
-	// seq_display.x3 = x2
-	// seq_display.y3 = y2
-	// seq_display.w = int(x2 - x1)
-	// seq_display.h = int(y2 - y1)
-
 	if(initial){
 		createCanvas(W, H)
-		// sequence_chart_buffer = createGraphics(seq_display.w, seq_display.h)
-		// console.log(seq_display.w, seq_display.h)
 	}	
 	else{
 		resizeCanvas(W, H)
-		// sequence_chart_buffer.resizeCanvas(seq_display.w, seq_display.h)
 	} 
 
 	chart = new fingering_chart(chart_x, chart_y);
@@ -270,6 +236,18 @@ function setup(initial=true) {
 		if(chart.repeat) LOOP_button.style('backgroundColor', 'rgb(255,200,95)')
 	 	else LOOP_button.style('backgroundColor', 'rgb(240,240,240)')
 		set_play_button_chars()
+	}
+	if(stored_mode_mode != mode_mode){
+		mode_mode_switch()
+	}
+	if(stored_hide_fingering_state != hide_fingering){
+		hide_fingerings()
+	}
+	if(stored_condensed_notes_state != condensed_notes){
+		condense_notes()
+	}
+	if(stored_display_waveform_state != display_waveform){
+		toggle_waveform_display()
 	}
 }
 
@@ -486,12 +464,14 @@ function key_shift(input_note=null){
 
 function condense_notes(){
 	condensed_notes = !condensed_notes
+	storeItem("condensed_notes_state", condensed_notes)
+	stored_condensed_notes_state = condensed_notes
 	COND_button.style('backgroundColor', 'rgb(240,240,240)')
 	HIDE_FING_button.style('backgroundColor', 'rgb(240,240,240)')
 	if(condensed_notes){
 		if(hide_fingering) document.getElementById("COND").innerHTML = '|||'
 		else document.getElementById("COND").innerHTML = '⁞⁞⁞'
-		document.getElementById("MODE_MODE").innerHTML = 'RELATIVE MODE < >'
+		document.getElementById("MODE_MODE").innerHTML = 'RELATIVE MODE ◀ ▶'
 		MODE_MODE_button.style('backgroundColor', 'rgb(180,180,180)')
 		RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 	}
@@ -500,7 +480,7 @@ function condense_notes(){
 		else document.getElementById("COND").innerHTML = '⁞⁞⁞⁞⁞⁞'
 		COND_button.style('backgroundColor', 'rgb(240,240,240)')
 		if(mode_mode == 'parallel'){
-			document.getElementById("MODE_MODE").innerHTML = 'PARALLEL MODE < >'
+			document.getElementById("MODE_MODE").innerHTML = 'PARALLEL MODE ◀ ▶'
 			MODE_MODE_button.style('backgroundColor', 'rgb(110,150,240)')
 			RAND_MODE_button.style('backgroundColor', 'rgb(110,150,240)')
 		}
@@ -519,7 +499,8 @@ function condense_notes(){
 function hide_fingerings(){
 	if(note_count != 12) return
 	hide_fingering = !hide_fingering
-
+	storeItem("hide_fingering_state", hide_fingering)
+	stored_hide_fingering_state = hide_fingering
 	if(hide_fingering){
 		if(condensed_notes)	document.getElementById("COND").innerHTML = '|||'
 		else document.getElementById("COND").innerHTML = '||||||'
@@ -897,6 +878,9 @@ function input_pressed(){
 		userStartAudio()
 		audio_started = true
 	} 
+	if(mouseY > chart_hy && mouseX > chart_x * 1.02 && W > 1000){
+		toggle_waveform_display()
+	}
 	if(chart && mouseX > chart_x){
 		if(effects_controls){
 			effects_controls = false
@@ -904,7 +888,7 @@ function input_pressed(){
 		} 
 		chart.mousePressed()
 	}
-	else if(mouseY > 3.5 * U && mouseY < min(H - U, 16.5 * U)){
+	else if(mouseY > 3.5 * U && mouseY < min(H - U, 16.5 * U) && !misc_buttons_shown){
 		effects_controls_primed = true
 	}
 	
@@ -1175,30 +1159,32 @@ function keyPressed() {
 		else if (keyCode === RIGHT_ARROW) mode_increase()
 		else if (keyCode === DOWN_ARROW) scale_increase()
 		else if (keyCode === UP_ARROW) scale_decrease()
-		else if (key_L === 'c') mode_mode_switch()
+		// else if (key_L === 'c') mode_mode_switch()
 		else if (key_L === 'z') prev_scale()
 		else if (key_L === 'x') next_scale()
 		else if (key_L === 'd') toggle_drone()
 		else if (key_L === 'p') play_scale(true)
 		else if (key_L === ' ') play_scale(false)
-		else if (key_L === 'm'){
-			mode_mode_switch()
-		}
-		else if (key_L === 'w'){
-			display_waveform = !display_waveform
-			if(!display_waveform){
-				push()
-				fill(255)
-				rectMode(CORNERS)	
-				rect(chart_x * 1.02, chart_hy, W, H)
-				pop()
-			}
-		}
+		else if (key_L === 'm')	mode_mode_switch()
+		else if (key_L === 'w') toggle_waveform_display()
 		else{
 			const num = ~~key
 			if (num == 1 || num == 2) {
 				set_octaves_to_play(num)
 			}
 		}
+	}
+}
+
+function toggle_waveform_display(){
+	display_waveform = !display_waveform
+	storeItem("display_waveform_state", display_waveform)
+	stored_display_waveform_state = display_waveform
+	if(!display_waveform){
+		push()
+		fill(255)
+		rectMode(CORNERS)	
+		rect(chart_x * 1.02, chart_hy, W, H)
+		pop()
 	}
 }

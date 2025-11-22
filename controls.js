@@ -452,7 +452,6 @@ function create_controls(initial=true){
 
 }
 
-var mode_mode = 'relative'
 function mode_mode_switch(){
 	if(mode_mode == 'relative'){
 		mode_mode = 'parallel'
@@ -473,6 +472,8 @@ function mode_mode_switch(){
 		MODE_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 		RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 	}
+	storeItem("mode_mode", mode_mode)
+	stored_mode_mode = mode_mode
 }
 
 function TOGL_miscellaneous_buttons(){
