@@ -20,7 +20,7 @@ var note_index, note_index_temp
 
 const seq_display = {}
 
-var sequence_number = 1
+// var sequence_number = 1
 const seq_arr = [];
 let n = 16;
 while (n--) seq_arr[n] = n + 1
@@ -71,17 +71,78 @@ class fingering_chart {
 		this.beats_per_measure = 4
 		this.interval_time = this.beat
 		this.current_note_index = 0
+		this.sequence_note_index = 0
+		// this.sequence_note_index_init = 0
+		// this.sequence_index = 0
 		this.dir = 1
 		this.time = 0
 		this.playing_scale = false
 		playing = false
 		this.index_offset = 0
 		this.started = false
-		this.reversal = true
+		if(dir_override == 0 || dir_override == 2) this.reversal = true
 		this.reversal_mode = 2 // 2,1,-1
 		this.first_scale_note = null
 		this.last_scale_note = null
 		update_seq_display = true
+	}
+
+	_handlePlayingScale() {
+		let elapsed_time = millis() * 0.001 - this.time
+		if (!(elapsed_time > this.interval_time)) return
+
+		redraw_notes = true
+		this.time = millis() * 0.001
+
+		if (this.started) {
+			this.current_note_index++
+			this.sequence_note_index += this.dir
+		}
+		this.interval_time = this.notes_sequence_lengths[this.current_note_index]
+
+		if (playing_note) playing_note.mouseReleased()
+
+		const seq_index = (this.dir == -1) ? (this.notes_sequence.length - 1 - this.current_note_index) : this.current_note_index
+		const index1 = this.notes_sequence[seq_index]
+		let index2 = index1 + scale_offset
+
+		if (index2 > this.scale_notes.length - 1) this.index_offset = -scale_pattern.length
+		if (index2 + this.index_offset < 0) this.index_offset = min(0, this.index_offset) + scale_pattern.length
+
+		this.started = true
+		playing_note = this.scale_notes[min(max(index2 + this.index_offset, 0), this.scale_notes.length - 1)]
+		frequency = playing_note.frequency
+		// console.log(playing_note.note_display_name, playing_note.scale_index - 1, this.sequence_note_index)
+
+		playing_note.mousePressed(this.interval_time * 0.8)
+		redraw_waveform = true
+
+		this.generate_sequence_display(this.sequence_note_index)
+
+		if (this.current_note_index == this.notes_sequence.length - 1) {
+			this.current_note_index = 0
+			this.index_offset = 0
+			this.started = false
+			if (this.repeat) {
+				if (dir_override >= 0) this.sequence_note_index = 0
+				if (dir_override == -1 || (this.reversal && (dir_override == 0 || dir_override == 2))) this.sequence_note_index = this.notes_sequence.length - 1
+			}
+
+			if ((this.dir == 1 && this.reversal) || this.repeat) {
+				if (this.reversal && (dir_override == 0 || dir_override == 2)) {
+					this.dir *= -1
+					if (this.dir == 1) {
+						this.sequence_note_index = 0
+					} 
+				}
+			} else {
+				this.playing_scale = false
+				playing = false
+				playing_note = null
+				playing_paused = false
+				PLAY_button.style('backgroundColor', 'rgb(240,240,240)')
+			}
+		}
 	}
 
 	create_fingering_pattern() {
@@ -340,53 +401,7 @@ class fingering_chart {
 	}
 
 	draw() {
-		if (this.playing_scale) {
-			let elapsed_time = millis() * 0.001 - this.time
-			if (elapsed_time > this.interval_time) {
-				redraw_notes = true
-				this.time = millis() * 0.001
-
-				if (this.started) this.current_note_index++
-				this.interval_time = this.notes_sequence_lengths[this.current_note_index]
-
-				if (playing_note) playing_note.mouseReleased()
-
-				let index1 = this.notes_sequence[this.current_note_index]
-				let index2 = index1 + scale_offset
-				if (this.dir == -1) index2 = this.override_OTP * scale_pattern.length - index1 + scale_offset
-
-				if (index2 > this.scale_notes.length - 1) this.index_offset = -scale_pattern.length // if it goes too high, bounce it lower
-				if (index2 + this.index_offset < 0) this.index_offset = min(0, this.index_offset) + scale_pattern.length // this.OTP* // if it goes too low, bounce it higher
-
-				this.started = true
-				playing_note = this.scale_notes[min(max(index2 + this.index_offset, 0), this.scale_notes.length - 1)]
-				frequency = playing_note.frequency
-
-				playing_note.mousePressed(this.interval_time * 0.8) // plays notes for 80% of the time interval
-				// pressedNote = playing_note;
-				redraw_waveform = true
-
-				if (this.current_note_index == this.notes_sequence.length - 1) {
-					this.current_note_index = 0 //pattern_restart_point 
-					this.index_offset = 0
-					this.started = false
-
-					if ((this.dir == 1 && this.reversal) || this.repeat) {
-						if (this.reversal && !dir_override){ 
-							this.dir *= -1
-							// if(sequence_slider_shown)
-						  document.getElementById("REVM").innerHTML = 'DIR = ' + this.dir
-							if(this.dir == 1) REVERSE_MODE_button.style('backgroundColor', 'rgb(150,215,105)')
-							else REVERSE_MODE_button.style('backgroundColor', 'rgb(115,170,255)')
-						}
-					} else {
-						this.playing_scale = false
-						playing = false
-						playing_note = null
-					}
-				}
-			}
-		}
+		if (this.playing_scale) this._handlePlayingScale()
 		// -------------------------------------------------------------------------------
 		if(update_chart || redraw_notes) {
 			if (update_chart) {
@@ -542,7 +557,7 @@ class fingering_chart {
 		let scale_length = scale_pattern.length * this.override_OTP
 		this.notes_sequence = []
 		let pattern = []
-		this.reversal = true
+		if(dir_override == 0 || dir_override == 2) this.reversal = true
 		let X = this.override_OTP
 		let Y = scale_pattern.length
 		let end = 0
@@ -552,20 +567,20 @@ class fingering_chart {
 				this.notes_sequence = [...Array(scale_length + 1).keys()]
 				break
 			case 2: // thirds alternating
-				for (i = 0; i < scale_length * 2 - 1; i++) {
+				for (let i = 0; i < scale_length * 2 - 1; i++) {
 					this.notes_sequence.push(i % 2 + Math.ceil(i / 2))
 				}
 				this.notes_sequence.push(scale_length)
 				break
 			case 3: // reverse ascending descending doubles = good for minor pentatonic
-				for (i = 0; i < (scale_length) * 2; i++) {
+				for (let i = 0; i < (scale_length) * 2; i++) {
 					this.notes_sequence.push(scale_length - (1 - i % 2 + Math.floor(i / 2)))
 				}
 				this.notes_sequence.push(0)
 				this.reversal = false
 				break
 			case 4: // replacement for sequence 4?
-				for (i = 0; i < (scale_length - 1) * 3; i++) {
+				for (let i = 0; i < (scale_length - 1) * 3; i++) {
 					this.notes_sequence.push((i % 3) + Math.floor(i / 3))
 				}
 				// this.reversal = false
@@ -576,32 +591,33 @@ class fingering_chart {
 				// 	}
 				// 	break
 			case 5: // treasure reveal on whole tone scale
-				for (i = 0; i < (scale_length - 2) * 4; i++) {
+				for (let i = 0; i < (scale_length - 2) * 4; i++) {
 					this.notes_sequence.push((i % 4) + Math.floor(i / 4))
 				}
 				// this.reversal = false
 				break
 			case 6: // ascending descending triplets = [2,1,0, 3,2,1, 4,3,2, ... 9,8,7]
-				for (i = 0; i < (scale_length) * 3; i++) {
+				for (let i = 0; i < (scale_length) * 3; i++) {
 					this.notes_sequence.push(2 - i % 3 + Math.floor(i / 3))
 				}
 				this.notes_sequence.push(scale_length)
+				this.reversal = false
 				break
 			case 7: // ascending descending thirds triplets
-				for (i = 0; i < (scale_length - 2) * 3; i++) {
+				for (let i = 0; i < (scale_length - 2) * 3; i++) {
 					this.notes_sequence.push(2 * (2 - i % 3) + Math.floor(i / 3))
 				}
 				this.notes_sequence.push(scale_length)
 				break
 			case 8: // thirds triplets = [0,2,4, 1,3,5, 2,4,6, ... 7,9,11]
-				for (i = 0; i < (scale_length - 2) * 3; i++) {
+				for (let i = 0; i < (scale_length - 2) * 3; i++) {
 					this.notes_sequence.push(2 * (i % 3) + Math.floor(i / 3))
 				}
 				this.notes_sequence.push(scale_length)
 				break
 			case 9: // 1,2,3,5
 				pattern = [0, 1, 2, 4]
-				for (i = 0; i < (scale_length - 2) * 4; i++) {
+				for (let i = 0; i < (scale_length - 2) * 4; i++) {
 					let f = Math.floor(i / 4)
 					f += pattern[i % 4]
 					this.notes_sequence.push(f)
@@ -617,7 +633,7 @@ class fingering_chart {
 				// // else if(scale_length == 8) end = pattern.length * (this.OTP + 2)
 				// // else if(scale_length == 6) end = pattern.length * (this.OTP + 1)
 				// else end = pattern.length * (this.OTP * 3 - 1)
-				for (i = 0; i < end; i++) {
+				for (let i = 0; i < end; i++) {
 					let f = scale_length - 2 * Math.floor(i / 4)
 					f -= pattern[i % 4]
 					this.notes_sequence.push(f)
@@ -626,21 +642,21 @@ class fingering_chart {
 				break
 			case 11: // triads
 				pattern = [0, 2, 4, 5, 3, 1]
-				for (i = 0; i < 2 * X * Y + X * (Y - 5) + 1; i++) {
+				for (let i = 0; i < 2 * X * Y + X * (Y - 5) + 1; i++) {
 					let f = 2 * Math.floor(i / 6)
 					f += pattern[i % 6]
 					this.notes_sequence.push(f)
 				}
 				break
 			case 12: // fourths alternating
-				for (i = 0; i < scale_length * 2; i++) {
+				for (let i = 0; i < scale_length * 2; i++) {
 					this.notes_sequence.push(2 * (i % 2) + Math.ceil(i / 2))
 				}
 				this.notes_sequence.push(scale_length)
 				break
 			case 13:
 				pattern = [0, 1, 2, 0, -1, -2]
-				for (i = 0; i < (scale_length - 1) * pattern.length; i++) {
+				for (let i = 0; i < (scale_length - 1) * pattern.length; i++) {
 					let f = scale_length - Math.floor(i / 6)
 					f += pattern[i % 6]
 					this.notes_sequence.push(f)
@@ -651,7 +667,7 @@ class fingering_chart {
 				let j = scale_length
 				let k = 0
 				end = scale_length * 2 + 1
-				for (i = 0; i < end; i++) {
+				for (let i = 0; i < end; i++) {
 					if (i < scale_length) {
 						if (i % 2 == 0) {
 							this.notes_sequence.push(k);
@@ -677,13 +693,13 @@ class fingering_chart {
 				this.reversal = false
 				break
 			case 15: // fourths triplets
-				for (i = 0; i < scale_length * 3; i++) {
+				for (let i = 0; i < scale_length * 3; i++) {
 					this.notes_sequence.push(3 * (i % 3) + Math.floor(i / 3))
 				}
 				this.notes_sequence.push(scale_length)
 				break
 			case 16: // octaves practice
-				for (i = 0; i < scale_length * 2 + 1; i++) {
+				for (let i = 0; i < scale_length * 2 + 1; i++) {
 					this.notes_sequence.push((scale_length - 1) * (i % 2) + Math.ceil(i / 2))
 				}
 				// this.OTP = 1
@@ -693,7 +709,9 @@ class fingering_chart {
 				// }
 				break
 		}
-
+		if(dir_override == 2){
+			this.reversal = true
+		}
 		this.generate_note_lengths()
 		if(show_seq && update_seq_display) this.generate_sequence_display()
 	}
@@ -728,21 +746,21 @@ class fingering_chart {
 	}
 
 	play_scale(seq_number = 0) {
+		playing_paused = false
 		if (scale_pattern.length * this.override_OTP != scale_notes_length_temp) { // || seq_number > 0){
 			// if(seq_number == 0) seq_number = 1
 			this.generate_sequence()
 			scale_notes_length_temp = scale_pattern.length * this.override_OTP
 		}
-		if(dir_override){
-			this.dir = dir_override
-			if(this.dir == 1) REVERSE_MODE_button.style('backgroundColor', 'rgb(170,255,165)')
-			else REVERSE_MODE_button.style('backgroundColor', 'rgb(175,220,255)')
+		if(dir_override < 0) this.sequence_note_index = this.notes_sequence.length - 1
+		else this.sequence_note_index = 0
+
+		if(dir_override == -1){
+			this.dir = -1
 		}	
 		else{
 			this.dir = 1
-			REVERSE_MODE_button.style('backgroundColor', 'rgb(150,215,105)')
 		}
-		document.getElementById("REVM").innerHTML = 'DIR = ' + this.dir
 		this.scale_notes = []
 		this.current_note_index = 0
 		let started = false
@@ -766,71 +784,114 @@ class fingering_chart {
 			playing = true
 			this.started = false
 		}
-		
-		// update_chart = true
 	}
 
-	generate_sequence_display() {
+	generate_sequence_display(playing_note_index = null) {
+		
+		const M = U * (0.4 - 0.15 * (this.override_OTP - 1))
 
-		let N = this.notes_sequence.length
-		let x1 = chart_x2 - 14 * U
-		let x2 = chart_x2
-		let SF = (this.override_OTP == 1) ? 1 : 0.5
-		let M = U * (0.4 - 0.15 * (this.override_OTP - 1))
-		let x_step = (x2 - x1 - 2 * M) / (N - 1)
-
-		let y1 = 1 * U
-		let y2 = chart_y - 1.565 * U
-
-		seq_display.x0 = x1
-		seq_display.y0 = y1
-		seq_display.x1 = x1 + M
-		seq_display.y1 = y1 + M
-		seq_display.x2 = x2 - M
-		seq_display.y2 = y2 - M
-		seq_display.x3 = x2
-		seq_display.y3 = y2
-		seq_display.w = x2 - x1
-		seq_display.h = y2 - y1
-
-		push()
-		fill(255)
-		noStroke()
-		rectMode(CORNERS)
-		strokeCap(ROUND)
-		rect(x1 - 1, y1 - 1, x2 + 1, y2 + 1)
-		stroke(30)
-		strokeWeight(30 * SF * U / 350)
-		let min_f = Math.min(...this.notes_sequence)
-		let max_f = Math.max(...this.notes_sequence)
-		f_span = max(1, max_f - min_f)
-		let y_step = (y2 - y1 - 2 * M) / f_span
-		let diam = min(x_step * 1.5, y_step * 1.2, 1.95 * M)
-		fill(30)
-		// circle(x2 - M, y1 + M, diam)
-
-		let count = 0
-		let min_y = 0
-		for (let x = x1 + M; x <= x2 - M / 2; x += x_step) {
-			let f = this.notes_sequence[min(count, this.notes_sequence.length - 1)]
-			let y = map(f, max_f, min_f, y1 + M, y2 - M)
-			line(x, y1 + M, x, y2 - M)
-			push()
-			if (f % scale_pattern.length == 0) {
-				fill(col2)
-				stroke(col2)
-				strokeWeight(5 * SF * 15 * U / 350)
-				line(x1 + M, y, x2 - M, y)
-			}
-			noStroke()
-			circle(x, y, diam)
-			pop()
-			line(x1 + M, y, x2 - M, y)
-			count++
-			min_y = min(y, min_y)
+		if(playing_note_index == null){
+			const x1 = chart_x2 - 14 * U
+			const x2 = chart_x2
+			const y1 = 1 * U
+			const y2 = chart_y - 1.565 * U
+			
+			seq_display.x0 = x1
+			seq_display.y0 = y1
+			seq_display.x1 = x1 + M
+			seq_display.y1 = y1 + M
+			seq_display.x2 = x2 - M
+			seq_display.y2 = y2 - M
+			seq_display.x3 = x2
+			seq_display.y3 = y2
+			seq_display.w = x2 - x1
+			seq_display.h = y2 - y1
 		}
-		pop()
-		update_seq_display = false
+
+		const N = this.notes_sequence.length
+		const x_step = (seq_display.x3 - seq_display.x0 - 2 * M) / (N - 1)
+		const SF = (this.override_OTP == 1) ? 1 : 0.5
+		const wt2 = 5 * SF * 15 * U / 350
+		const min_f = Math.min(...this.notes_sequence)
+		const max_f = Math.max(...this.notes_sequence)
+		const f_span = max(1, max_f - min_f)
+		const y_step = (seq_display.y3 - seq_display.y0 - 2 * M) / f_span
+		const diam = min(x_step * 1.5, y_step * 1.2, 1.95 * M) * 0.9
+
+		if(playing_note_index == null){
+
+			push()
+			fill(255)
+			noStroke()
+			rectMode(CORNERS)
+			strokeCap(ROUND)
+			rect(seq_display.x0 - 1, seq_display.y0 - 1, seq_display.x3 + 1, seq_display.y3 + 1)
+			stroke(30)
+			const wt1 = 30 * SF * U / 350
+
+			strokeWeight(wt1)
+			fill(30)
+
+			let col3 = color(...col2, 170)
+			let col4 = color(...col1, 170)
+			let count = 0
+			const y_avg = (seq_display.y0 + seq_display.y3) / 2
+
+			// horizontal grid lines
+			for (let y = seq_display.y1; y <= seq_display.y3 - M/2; y += y_step) {
+				line(seq_display.x1, y, seq_display.x2, y)
+			}
+
+			let y_oct1 = 0
+			let y_oct2 = 0
+			for (let x = seq_display.x1; x <= seq_display.x3 - M/2; x += x_step) {
+				const f = this.notes_sequence[min(count, this.notes_sequence.length - 1)]
+				const y = map(f, max_f, min_f, seq_display.y1, seq_display.y2)
+				line(x, seq_display.y1, x, seq_display.y2)
+				push()
+				if (f % scale_pattern.length == 0) {
+					fill(col3)
+					push()
+					stroke(col3)
+					strokeWeight(wt2)
+					if(y <= y_avg && y != y_oct1){
+						line(seq_display.x1, y, seq_display.x2, y)
+						y_oct1 = y
+					}
+					if(y > y_avg && y != y_oct2){
+						line(seq_display.x1, y, seq_display.x2, y)
+						y_oct2 = y
+					}
+					pop()
+				}
+				else{
+					fill(col4)
+				}
+				noStroke()
+				circle(x, y, diam * 0.75)
+				circle(x, y, diam)
+				pop()
+				count++
+			}
+			pop()
+			update_seq_display = false
+			sequence_chart_buffer = better_get(seq_display.x0, seq_display.y0, seq_display.w, seq_display.h)
+		}
+		else{
+			image(sequence_chart_buffer, seq_display.x0,seq_display.y0, seq_display.w, seq_display.h)
+			push()
+			const x = seq_display.x1 + playing_note_index * x_step
+			const f = this.notes_sequence[min(playing_note_index, this.notes_sequence.length - 1)]
+			const y = map(f, max_f, min_f, seq_display.y1, seq_display.y2)
+			if(chart.dir == 1) stroke(255,80,50,120)
+			else stroke(50,80,255,120)
+			strokeWeight(wt2)
+			strokeCap(ROUND)
+			line(x, seq_display.y1, x, seq_display.y2)
+			pop()
+			fill(255,80,50,180)
+			circle(x, y, diam)
+		}
 	}
 }
 

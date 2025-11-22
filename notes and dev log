@@ -218,9 +218,37 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 	- made the effects controls activation require a press and release in the correct area for it.
 	This means you can't accidentally activate and update it when dragging off to the left of the chart.
 
+11-21-25
+	- finally got the envelope for the drone working properly so it has a slower attack and release.
+	- added key, mode, sequence number, octaves to play, play direction override, 
+	repeat mode, and tempo to the saved parameters
+	- changed play direction override controls to three buttons instead of one to make 
+	it faster and easier to control. Now you don't need to turn on reversal and wait for 
+	it to start playing in reverse to be able to lock it to reverse play mode.
+	- added a repeat button instead of requiring pressing the play button while it is playing to toggle
+	- added symbols to buttons for shuffle, loop, arrows, etc.
+	- fixed bug where playing the scale in stylo mode would play the last played note at the start. 
+	- added more keyboard controls: 1,2 to change octaves_to_play, p to play scale or switch looping mode, 
+	d to toggle on drone, space bar to start scale playing if or pause and resume if it is alread playing.
+	Put debugging and save chart behind a shift key requirement.
+	- changed m key to toggle the relative/parallel mode switch instead of switching between major and minor, 
+	which was not very useful. 
+	- allowed for changing octaves_to_play while scale is playing; 
+	changing sequence settings while a sequence is playing will restart it.
+	- adjusted save chart text positions to work properly on condensed chart.
+	- Added black background to full_chart to give it some dividing lines
+	- made it so that playing the scale sequence will highlight
+	 the currently playing note. In order to avoid having to redraw everything, 
+	 it saves the chart into a graphics buffer using better_get when it is updated, 
+	 so only the highlighted note needs to be drawn.
+	 This highlighted a bug in some of the sequences when playing in reverse, so I corrected that issue.
+	- added a favicon
+	- made button and select fonts a bit bolder for readability on mobile, 
+	- adjusted sizes and positions of select, sliders, radios, etc.
+	- changed split holes to show a dividing line when open.
+	- corrected half hole cover position on second front hole on high note 
 
 To-do:
--bug: sequence plays previous played note if you press one before playing the sequence, but only in stylo mode?
 -need to set up notation for all scales such that both flat and sharp notes can both be added where necessary
 -generate sheet music display for the scale patterns, even the shuffled ones.
 

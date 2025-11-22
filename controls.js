@@ -1,4 +1,4 @@
-var control_y, inst_x, scale_x, key_x, mode_x, tune_x, chart_x2
+var control_y, inst_x, scale_x, key_x, mode_x, tune_x
 var tuning_slider_shown = false
 var tempo_slider_shown = false
 var drone_vol_slider_shown = false
@@ -15,7 +15,6 @@ var shuffled_keys_index = 0
 var shuffled_mode_index = 0
 var shuffled_sequence_index = 0
 var sequence_number_temp = 0
-var activate_drone = false
 var misc_buttons_shown = false
 var octaves_changed = false
 var save_confirm_shown = false
@@ -23,11 +22,19 @@ var reverse_mode_switched = false
 let img_w, img_h, img_y
 
 function create_controls(initial=true){
-	inst_x = 1.5*U
-	scale_x = chart_x + 4*U + inst_x
-	key_x = chart_x + 11.5*U + inst_x
-	mode_x = chart_x + 14.75*U + inst_x
+	inst_x = 1.5 * U
+	scale_x = chart_x + 4.25 * U + inst_x
+	key_x = chart_x + 13 * U + inst_x
+	mode_x = chart_x + 16.5 * U + inst_x
 	control_y = 0//chart_y - 5*U
+	
+	const button_h = 1.65 * U
+	const button_w = min(4 * U, W - chart_x2)
+	const scl = int(U * 0.5)
+	const scl_L = int(U * 0.7)
+	const scl2 = min(button_h, int(U * (0.55 + 0.25 * mobile)))
+
+	const text_w = int(0.25 * button_w)
 	
 	background(255)
 	
@@ -47,7 +54,7 @@ function create_controls(initial=true){
 		key_select.position(key_x, control_y)
 		mode_select.position(mode_x, control_y)
 
-		let font_size = int(U*0.65) + "px"
+		let font_size = int(U * 0.65) + "px"
 		instrument_select.style("font-size", font_size)
 		scale_select.style("font-size", font_size)
 		key_select.style("font-size", font_size)
@@ -63,28 +70,20 @@ function create_controls(initial=true){
 	// else notes_arr = notes_arr_C
 	
 	// create_dropdown(key_x, control_y, notes_arr, key_select, notes_arr[0], update_key, "key_select")
+
 	img_h = 15.8 * U
 	img_w = img.width / img.height * img_h
 	img_y = chart_y - 5.25 * U
 	image(img, 0, img_y, img_w, img_h)
 	
-	chart_x2 = 29.53*U
-	let button_h = 1.65*U
-	let button_w = min(4*U, W - chart_x2)
-	let scl = int(U*0.5)
-	let scl_L = int(U*0.7)
-	let scl2 = min(button_h, int(U*(0.47+0.25*mobile)))
-	
 	if(initial){
 		TEMPO_button = createButton(str(tempo) + ' bpm')
 		TEMPO_button.mousePressed(toggle_tempo_slider)
 		TEMPO_button.id('TEMPO')
-	} 
-	// TEMPO_button.position(25*U + inst_x, control_y)
-	// TEMPO_button.size(U*3, U);
+	}
 	TEMPO_button.size(button_w, button_h)
 	TEMPO_button.position(chart_x2, 0)
-  TEMPO_button.style("font-size", min(button_h, int(U*(0.6+0.2*mobile))) + "px") // int(U*0.65)
+  TEMPO_button.style("font-size", min(button_h, int(U * (0.6 + 0.27 * mobile))) + "px") // int(U*0.65)
 	
 	if(initial){
 		TEMPO_slider = createSlider(20, 400, tempo, 1)
@@ -92,24 +91,27 @@ function create_controls(initial=true){
 		TEMPO_slider.hide()
 		TEMPO_slider.addClass("slider")
 	} 
-	TEMPO_slider.position(5*U + inst_x, control_y + 0.75*U)
-	TEMPO_slider.size(U*22)
+	TEMPO_slider.position(5 * U + inst_x, control_y + 0.75 * U)
+	TEMPO_slider.size(U * 22)
 	
 	if(initial){
-		COND_button = createButton('<··>')
+		COND_button = createButton('⁞⁞⁞⁞⁞⁞')
+		COND_button.id('COND')
 		COND_button.mousePressed(condense_notes)
 	} 
-	COND_button.style("font-size", int(U*(0.7 + 0.1*mobile)) + "px")
+	COND_button.style("font-size", int(U * (0.7 + 0.1 * mobile)) + "px")
 	COND_button.size(button_w, button_h)
 	COND_button.position(chart_x2, chart_hy - button_h)
 
 	if(initial){
-		HIDE_FING_button = createButton('HIDE FING')
+		HIDE_FING_button = createButton('HIDE ◑|◉|◒')
+		HIDE_FING_button.id('HIDE')
+		// HIDE_FING_button = createButton('HIDE FING')
 		HIDE_FING_button.mousePressed(hide_fingerings)
 	} 
-	HIDE_FING_button.style("font-size", scl2 + "px")
+	HIDE_FING_button.style("font-size", scl2 * 0.85 + "px")
 	HIDE_FING_button.size(button_w, button_h)
-	HIDE_FING_button.position(chart_x2, chart_hy - 2*button_h)
+	HIDE_FING_button.position(chart_x2, chart_hy - 2 * button_h)
 	
 	let button_w2 = U * 2.62
 	let button_h2 = U * 1.8
@@ -119,7 +121,7 @@ function create_controls(initial=true){
 	
 	// if (note_count == 12){
 	if(initial){
-		TOGL_MISC_button = createButton('TOGL MISC')
+		TOGL_MISC_button = createButton('MISC. MENU')
 		TOGL_MISC_button.mousePressed(TOGL_miscellaneous_buttons)
 	} 
 	TOGL_MISC_button.style("font-size", scl + "px")
@@ -136,7 +138,7 @@ function create_controls(initial=true){
 	HOLD_KEY_button.position(button_w2*4, row2)
 	
 	if(initial){
-		HOLD_FING_button = createButton('HOLD FING')
+		HOLD_FING_button = createButton('HOLD FING.')
 		HOLD_FING_button.mousePressed(TOGL_instrument2)
 		HOLD_FING_button.hide()
 	} 
@@ -153,8 +155,8 @@ function create_controls(initial=true){
 		SAVE_CHART_button.hide()
 	} 
 	SAVE_CHART_button.style("font-size", scl_L + "px")
-	SAVE_CHART_button.size(button_w2 - U*0.1, button_h2 + U * 0.15)
-	SAVE_CHART_button.position(U*13.35, row3 - U * 0.15)
+	SAVE_CHART_button.size(button_w2 - U * 0.1, button_h2 + U * 0.15)
+	SAVE_CHART_button.position(U * 13.35, row3 - U * 0.15)
 	
 	if(initial){
 		SAVE_CHART_CANCEL_button = createButton('CANCEL')
@@ -163,8 +165,8 @@ function create_controls(initial=true){
 		SAVE_CHART_CANCEL_button.hide()
 	} 
 	SAVE_CHART_CANCEL_button.style("font-size", scl_L + "px")
-	SAVE_CHART_CANCEL_button.size(button_w2*1.4, button_h2)
-	SAVE_CHART_CANCEL_button.position(U*13.25 + button_w2, row3)
+	SAVE_CHART_CANCEL_button.size(button_w2 * 1.4, button_h2)
+	SAVE_CHART_CANCEL_button.position(U * 13.25 + button_w2, row3)
 	
 	if(initial){
 		SAVE_CHART_CONFIRM_button = createButton('CONFIRM')
@@ -182,7 +184,7 @@ function create_controls(initial=true){
 		DRONE_VOL_button.id('DRONE_VOL')
 		DRONE_VOL_button.hide()
 	} 
-	DRONE_VOL_button.style("font-size", int(U*0.67) + "px")
+	DRONE_VOL_button.style("font-size", int(U * 0.67) + "px")
 	DRONE_VOL_button.size(button_w2 + U*0.15, button_h2)
 	DRONE_VOL_button.position(last_col_x, row2)
 	
@@ -215,7 +217,7 @@ function create_controls(initial=true){
 	VOL_slider.size(U*12)
 	
 	if(initial){
-		SCL_DOWN_button = createButton('SCALE DOWN')
+		SCL_DOWN_button = createButton('SCALE ▼')
 		SCL_DOWN_button.mousePressed(scale_increase)
 		SCL_DOWN_button.id('SCL_DOWN')
 		SCL_DOWN_button.hide()		
@@ -225,42 +227,44 @@ function create_controls(initial=true){
 	SCL_DOWN_button.position(button_w2*1.5, row1)
 	
 	if(initial){
-		SCL_UP_button = createButton('SCALE UP')
+		SCL_UP_button = createButton('▲ SCALE')
 		SCL_UP_button.mousePressed(scale_decrease)
 		SCL_UP_button.id('SCL_UP')
-		SCL_UP_button.hide()		
+		SCL_UP_button.hide()
 	} 
 	SCL_UP_button.style("font-size", scl_L + "px")
 	SCL_UP_button.size(button_w2, button_h2)
 	SCL_UP_button.position(button_w2*1.5, row2)
 
-	if(initial) MODE_INC_button = createButton('>')
-	MODE_INC_button.style("font-size", int(U*2) + "px")
-	MODE_INC_button.size(button_w2*0.75, button_h2)
-	MODE_INC_button.position(button_w2*0.75, row2)
-	MODE_INC_button.mousePressed(mode_increase)
-	MODE_INC_button.id('MODE_INC')	
-	MODE_INC_button.hide()	
-	
+	if(initial){ 
+		MODE_INC_button = createButton('▶')
+		MODE_INC_button.mousePressed(mode_increase)
+		MODE_INC_button.id('MODE_INC')	
+		MODE_INC_button.hide()
+	}
+	MODE_INC_button.style("font-size", int(U * 1.5) + "px")
+	MODE_INC_button.size(button_w2 * 0.75, button_h2)
+	MODE_INC_button.position(button_w2 * 0.75, row1)
+
 	if(initial){
-		MODE_DEC_button = createButton('<')
+		MODE_DEC_button = createButton('◀')
 		MODE_DEC_button.mousePressed(mode_decrease)
 		MODE_DEC_button.id('MODE_DEC')
 		MODE_DEC_button.hide()	
 	} 
-	MODE_DEC_button.style("font-size", int(U*2) + "px")
-	MODE_DEC_button.size(button_w2*0.75, button_h2)
-	MODE_DEC_button.position(0, row2)
+	MODE_DEC_button.style("font-size", int(U * 1.5) + "px")
+	MODE_DEC_button.size(button_w2 * 0.75, button_h2)
+	MODE_DEC_button.position(0, row1)
 	
 	if(initial){
-		MODE_MODE_button = createButton('RELATIVE MODE < >')
+		MODE_MODE_button = createButton('RELATIVE MODE ◀ ▶')
 		MODE_MODE_button.mousePressed(mode_mode_switch)
 		MODE_MODE_button.id('MODE_MODE')
 		MODE_MODE_button.hide()
 	} 
 	MODE_MODE_button.style("font-size", scl_L + "px")
-	MODE_MODE_button.size(button_w2*1.5, button_h2)
-	MODE_MODE_button.position(0, row1)
+	MODE_MODE_button.size(button_w2 * 1.5, button_h2)
+	MODE_MODE_button.position(0, row2)
 	
 	if(initial){
 		PLACEHOLDER_button = createButton(' ')
@@ -283,8 +287,8 @@ function create_controls(initial=true){
 	TUNING_button.position(button_w2*2.5, row2)
 	
 	if(initial){
-		PREV_SCALE_button = createButton('PREV SCL')
-		NEXT_SCALE_button = createButton('NEXT SCL')
+		PREV_SCALE_button = createButton('PREV. SCL.')
+		NEXT_SCALE_button = createButton('NEXT SCL.')
 		PREV_SCALE_button.id('PREV_SCALE')	
 		NEXT_SCALE_button.id('NEXT_SCALE')
 		PREV_SCALE_button.mousePressed(prev_scale)
@@ -294,8 +298,8 @@ function create_controls(initial=true){
 		PREV_SCALE_button.style('backgroundColor', 'rgb(140,140,140)')
 		NEXT_SCALE_button.style('backgroundColor', 'rgb(140,140,140)')
 	} 
-	PREV_SCALE_button.style("font-size", scl_L + "px")
-	NEXT_SCALE_button.style("font-size", scl_L + "px")
+	PREV_SCALE_button.style("font-size", scl_L * 0.9 + "px")
+	NEXT_SCALE_button.style("font-size", scl_L * 0.9 + "px")
 	PREV_SCALE_button.size(button_w2*0.75, button_h2*4/3)
 	NEXT_SCALE_button.size(button_w2*0.75, button_h2*4/3)
 	PREV_SCALE_button.position(button_w2*2.5, row2 + button_h2*2/3)
@@ -311,48 +315,49 @@ function create_controls(initial=true){
 	TUNING_slider.size(U*17.5)
 
 	if(initial){
-		RAND_KEY_button = createButton('RAND KEY')
-		RAND_MODE_button = createButton('RAND MODE')
-		RAND_SCL_button = createButton('RAND SCL')
+		RAND_KEY_button = createButton('KEY 🔀')
+		RAND_MODE_button = createButton('MODE 🔀')
+		RAND_SCL_button = createButton('SCALE 🔀')
 		RAND_KEY_button.mousePressed(random_key)			
 		RAND_MODE_button.mousePressed(random_mode)
 		RAND_SCL_button.mousePressed(random_scale)
 		RAND_MODE_button.id('RAND_MODE')
 	} 
 	RAND_KEY_button.style("font-size", scl2 + "px")
-	RAND_KEY_button.size(button_w, button_h*1.1)
-	RAND_KEY_button.position(chart_x2, chart_hy - 5.5*button_h)
-	RAND_MODE_button.style("font-size", int(U*(0.46+0.18*mobile)) + "px")
-	RAND_MODE_button.size(button_w, button_h*1.1)
-	RAND_MODE_button.position(chart_x2, chart_hy - 4.4*button_h)
-	RAND_SCL_button.style("font-size", scl2 + "px")
-	RAND_SCL_button.size(button_w, button_h*1.1)
-	RAND_SCL_button.position(chart_x2, chart_hy - 3.3*button_h)
+	RAND_KEY_button.size(button_w, button_h * 1.1)
+	RAND_KEY_button.position(chart_x2, chart_hy - 5.5 * button_h)
+	RAND_MODE_button.style("font-size", scl2 * (0.85 + 0.1 * mobile) + "px")
+	RAND_MODE_button.size(button_w, button_h * 1.1)
+	RAND_MODE_button.position(chart_x2, chart_hy - 4.4 * button_h)
+	RAND_SCL_button.style("font-size", scl2 * (0.85 + 0.1 * mobile) + "px")
+	RAND_SCL_button.size(button_w, button_h * 1.1)
+	RAND_SCL_button.position(chart_x2, chart_hy - 3.3 * button_h)
 	
 	if(initial){
 		DRONE_button = createButton('DRONE')
 		DRONE_button.mousePressed(toggle_drone)
 		DRONE_button.id('DRONE')
 	} 
-	DRONE_button.style("font-size", int(0.25*button_w) + "px")
+	DRONE_button.style("font-size", text_w + "px")
 	DRONE_button.size(button_w, button_h)
 	DRONE_button.position(chart_x2, button_h)
 	
 	if(initial){
-		PLAY_button = createButton('PLAY ONCE')
+		PLAY_button = createButton('PLAY')
 		PLAY_button.mousePressed(play_scale)
 		PLAY_button.id('PLAY')
+		set_play_button_chars()
 	} 
 	PLAY_button.style("font-size", scl2 + "px")
 	PLAY_button.size(button_w, button_h)
   PLAY_button.position(chart_x2, 2*button_h)
 	
 	if(initial){
-		SEQ_SELECT_button = createButton('SEQ 01')
+		SEQ_SELECT_button = createButton('SEQ. 01')
 		SEQ_SELECT_button.mousePressed(toggle_sequence_slider)
 		SEQ_SELECT_button.id('SEQUENCE')
 	} 
-	SEQ_SELECT_button.style("font-size", int(0.25*button_w) + "px")
+	SEQ_SELECT_button.style("font-size", scl2 * 1.1 + "px")
 	SEQ_SELECT_button.size(button_w, button_h)
   SEQ_SELECT_button.position(chart_x2, 3*button_h)
 	
@@ -361,50 +366,70 @@ function create_controls(initial=true){
 		PLACEHOLDER2_button.id('PLACEHOLDER2')
 		PLACEHOLDER2_button.hide()	
 	} 
-	PLACEHOLDER2_button.size(button_w2*5.3, button_h2*2)
-	PLACEHOLDER2_button.position(U*1.55, row2)
+	PLACEHOLDER2_button.size(button_w2 * 5.3, button_h2 * 2)
+	PLACEHOLDER2_button.position(U * 1.55, row2)
 	
 	if(initial){
 		SEQUENCE_slider = createSlider(1, seq_arr.length, sequence_number, 1)
 		SEQUENCE_slider.input(update_sequence)
 		SEQUENCE_slider.hide()
 		SEQUENCE_slider.addClass("slider")
+		SEQUENCE_slider.value(sequence_number)
+		let seq_chars = sequence_number + (dir_override != 0 ? '*' : '')
+		document.getElementById("SEQUENCE").innerHTML = 'SEQ. ' + seq_chars
 	} 
-	SEQUENCE_slider.position(chart_x + 0.4*U, control_y + 4.15*U)
-	SEQUENCE_slider.size(U*13)
+	SEQUENCE_slider.position(chart_x + 0.4 * U, control_y + 4.5 * U)
+	SEQUENCE_slider.size(U * 13)
+
 	
 	if(initial){
 		OCT_RADIO = createRadio('octaves to play')
-		OCT_RADIO.selected(str(octaves_to_play))
 		OCT_RADIO.option('1')
 		OCT_RADIO.option('2')
-		OCT_RADIO.changed(set_octaves_to_play)	
+		OCT_RADIO.selected(str(octaves_to_play))
+		OCT_RADIO.changed(set_octaves_to_play)
 		OCT_RADIO.hide()
 	} 
-	OCT_RADIO.style("font-size", int(U*0.75) + "px")
-	OCT_RADIO.size(U*5, U*0.9)
-	OCT_RADIO.position(U*11.0,  U*2.75)
-	// if(!mobile) OCT_RADIO.style('transform', 'translateX(1.6em)')
+	OCT_RADIO.style("font-size", int(U * 0.85) + "px")
+	OCT_RADIO.size(U * 5, U * 0.9)
+	OCT_RADIO.position(U * 10.5,  U * 2.9)
 	
 	if(initial){
-		REVERSE_MODE_button = createButton('REV = ' + str(chart.reversal).toUpperCase())
-		REVERSE_MODE_button.mousePressed(reverse_mode_switch)
-		REVERSE_MODE_button.id('REVM')
-		REVERSE_MODE_button.hide()
+		REVERSE_button = createButton('◀') // ⬅️
+		REVERSE_button.mousePressed(toggle_reverse_mode)
+		REVERSE_button.id('REV')
+		REVERSE_button.hide()
+		FORWARD_button = createButton('▶') // ➡️
+		FORWARD_button.mousePressed(toggle_forward_mode)
+		FORWARD_button.id('FORW')
+		FORWARD_button.hide()
+		BOTH_DIR_button = createButton('◀▶') // ↔️
+		BOTH_DIR_button.mousePressed(toggle_both_directions_mode)
+		BOTH_DIR_button.id('BOTH')
+		BOTH_DIR_button.hide()
+		LOOP_button = createButton('🔁')
+		LOOP_button.mousePressed(toggle_loop_mode)
+		LOOP_button.id('BOTH')
+		LOOP_button.hide()
 	} 
-	REVERSE_MODE_button.style("font-size", scl_L + "px")
-	REVERSE_MODE_button.size(U*4.5, U)
-	REVERSE_MODE_button.position(U*6, U*2.85)
-		
-	// SCALE_SET_RADIO = createRadio('SCALE SUBSET')
-	// SCALE_SET_RADIO.option('ALL')
-	// SCALE_SET_RADIO.option('FAMILY')
-	// SCALE_SET_RADIO.selected(str(octaves_to_play))
-	// SCALE_SET_RADIO.style("font-size", int(U*0.65) + "px")
-	// SCALE_SET_RADIO.size(button_w, button_h*0.5)
-	// SCALE_SET_RADIO.position(chart_x2 + button_w*0.1,  chart_hy - 6.5*button_h)
-	// SCALE_SET_RADIO.changed(set_octaves_to_play)
+	const scl_L2 = scl_L * 1.5
+	REVERSE_button.style("font-size", scl_L2 + "px")
+	REVERSE_button.size(U * 1.5, U * 1.5)
+	REVERSE_button.position(U * 2, U * 2.85)
+
+	BOTH_DIR_button.style("font-size", scl_L2 + "px")
+	BOTH_DIR_button.size(U * 2.25, U * 1.5)
+	BOTH_DIR_button.position(U * 3.5, U * 2.85)
+
+	FORWARD_button.style("font-size", scl_L2 + "px")
+	FORWARD_button.size(U * 1.5, U * 1.5)
+	FORWARD_button.position(U * 5.75, U * 2.85)
+
+	LOOP_button.style("font-size", scl_L2 + "px")
+	LOOP_button.size(U * 1.5, U * 1.5)
+	LOOP_button.position(U * 7.75, U * 2.85)
 	
+
 	// if(initial) notes_count_input = createInput(str(note_count))
 	// notes_count_input.style("font-size", int(U*0.65) + "px")
 	// notes_count_input.size(button_w*0.75, button_h/2)
@@ -432,19 +457,19 @@ function mode_mode_switch(){
 	if(mode_mode == 'relative'){
 		mode_mode = 'parallel'
 		if(condensed_notes){
-			document.getElementById("MODE_MODE").innerHTML = 'RELATIVE MODE < >'
+			document.getElementById("MODE_MODE").innerHTML = 'RELATIVE MODE ◀ ▶'
 			MODE_MODE_button.style('backgroundColor', 'rgb(180,180,180)')
 			RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 		}
 		else{
-			document.getElementById("MODE_MODE").innerHTML = 'PARALLEL MODE < >'
+			document.getElementById("MODE_MODE").innerHTML = 'PARALLEL MODE ◀ ▶'
 			MODE_MODE_button.style('backgroundColor', 'rgb(110,150,240)')
 			RAND_MODE_button.style('backgroundColor', 'rgb(110,150,240)')
 		}
 	}
 	else{
 		mode_mode = 'relative'
-		document.getElementById("MODE_MODE").innerHTML = 'RELATIVE MODE < >'
+		document.getElementById("MODE_MODE").innerHTML = 'RELATIVE MODE ◀ ▶'
 		MODE_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 		RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 	}
@@ -512,25 +537,89 @@ function save_confirm(){
 }
 
 var dir_override = 0
-function reverse_mode_switch(){
-	chart.reversal = !chart.reversal
-	reverse_mode_switched = true
-	if(chart.playing_scale && !chart.reversal){ 
-		dir_override = chart.dir
-		document.getElementById("REVM").innerHTML = 'DIR = ' + chart.dir
+
+function toggle_reverse_mode(){
+	direction_mode_switch(-1)
+}
+function toggle_forward_mode(){
+	direction_mode_switch(1)
+}
+function toggle_both_directions_mode(){
+	direction_mode_switch(2)
+}
+
+function direction_mode_switch(direction){
+	if(direction != dir_override){
+		dir_override = direction
+		if(direction == 2) chart.reversal = true
+		else{
+			chart.reversal = false
+			if(dir_override != chart.dir){
+				// chart.dir = dir_override
+				if(chart.playing_scale) chart.play_scale()
+			}
+		} 
 	}
 	else{
 		dir_override = 0
-		document.getElementById("REVM").innerHTML = 'REV = ' + str(chart.reversal).toUpperCase()
+		if ([3, 6, 10, 13, 14].includes(sequence_number)) chart.reversal = false
+		else chart.reversal = true
 	}
-	if(chart.reversal) REVERSE_MODE_button.style('backgroundColor', 'rgb(255,200,95)')
+	storeItem("dir_override", dir_override)
+	set_direction_button_colors()
+	set_play_button_chars()
+	let seq_chars = sequence_number + (dir_override != 0 ? '*' : '')
+	document.getElementById("SEQUENCE").innerHTML = 'SEQ. ' + seq_chars
+}
+
+function set_direction_button_colors(){
+	if(chart.reversal){
+		if(dir_override == 2)	BOTH_DIR_button.style('backgroundColor', 'rgb(255,200,95)') 
+		else BOTH_DIR_button.style('backgroundColor', 'rgb(255, 237, 123)')
+		REVERSE_button.style('backgroundColor', 'rgb(240,240,240)')
+		FORWARD_button.style('backgroundColor', 'rgb(240,240,240)')
+	}
 	else{
-		if(chart.dir == 1) REVERSE_MODE_button.style('backgroundColor', 'rgb(170,255,165)')
-		else REVERSE_MODE_button.style('backgroundColor', 'rgb(175,220,255)')
-		// REVERSE_MODE_button.style('backgroundColor', 'rgb(255,235,175)')
+		BOTH_DIR_button.style('backgroundColor', 'rgb(240,240,240)')
+		FORWARD_button.style('backgroundColor', 'rgb(240,240,240)')
+		REVERSE_button.style('backgroundColor', 'rgb(240,240,240)')
+		if(dir_override == -1){
+			REVERSE_button.style('backgroundColor', 'rgb(255,200,95)')
+		} 
+		else if(dir_override == 1){
+			FORWARD_button.style('backgroundColor', 'rgb(255,200,95)')
+		}
+		else FORWARD_button.style('backgroundColor', 'rgb(255, 237, 123)')
 	}
 }
 
+function set_play_button_chars(){
+	let direction_chars
+	if(dir_override == 0){
+		direction_chars = chart.reversal ? '◀ ▶' : '▶'
+	}
+	else{
+		if(dir_override == 2) direction_chars = '◀ ▶'
+		else if(dir_override == 1) direction_chars = '▶'
+		else direction_chars = '◀'
+	}
+	if(chart.repeat) direction_chars += ' 🔁'
+	document.getElementById("PLAY").innerHTML = direction_chars
+}
+
+function toggle_loop_mode(){
+
+	chart.repeat = !chart.repeat
+	storeItem("repeat_state", chart.repeat)
+
+	if(chart.repeat){
+		LOOP_button.style('backgroundColor', 'rgb(255,200,95)')
+	}
+	else{
+		LOOP_button.style('backgroundColor', 'rgb(240,240,240)')
+	}
+	set_play_button_chars()
+}
 
 // function set_note_count(){
 // 	// let note_count_temp = min(max(int(abs(notes_count_input.value())),1),120)
@@ -573,13 +662,27 @@ function reverse_mode_switch(){
 // }
 
 
-function set_octaves_to_play(){
-	if (octaves_to_play != int(OCT_RADIO.value())){
-		octaves_to_play = int(OCT_RADIO.value())
+function set_octaves_to_play(value = null){
+  if (typeof value !== 'number' || isNaN(value) || value === null) {
+    value = int(OCT_RADIO.value());
+  }
+	let octaves_to_play_new = value
+	if (octaves_to_play_new != octaves_to_play){
+		let currently_playing_scale = chart.playing_scale
+		if(currently_playing_scale){
+			chart.playing_scale = false
+		}
+		octaves_to_play = octaves_to_play_new
+		storeItem("octaves_to_play", octaves_to_play)
+		OCT_RADIO.selected(str(octaves_to_play))
 		chart.OTP = octaves_to_play
 		octaves_changed = true
 		update_seq_display = true
 		chart.generate_sequence()
+
+		if(currently_playing_scale){
+			chart.play_scale()
+		}
 	}
 }
 
@@ -600,15 +703,15 @@ function set_octaves_to_play(){
 // }
 
 
-function shuffle_sequence(){
-	if(chart.playing_scale){ 
-		// sequence_number = int(random(1,6))
-		chart.play_scale(sequence_number)
-		chart.generate_note_lengths(true)
-		shuffle(chart.notes_sequence, true)
-		// print(chart.notes_sequence)
-	}											
-}
+// function shuffle_sequence(){
+// 	if(chart.playing_scale){ 
+// 		// sequence_number = int(random(1,6))
+// 		chart.play_scale(sequence_number)
+// 		chart.generate_note_lengths(true)
+// 		shuffle(chart.notes_sequence, true)
+// 		// print(chart.notes_sequence)
+// 	}											
+// }
 
 
 function random_scale(){		
@@ -652,12 +755,14 @@ function random_sequence(){
 function update_sequence(){
 	update_seq_display = true
 	sequence_number = SEQUENCE_slider.value()
+	storeItem("sequence_number", sequence_number)
 	chart.generate_sequence()
-	document.getElementById("SEQUENCE").innerHTML = 'SEQ ' + sequence_number
+	let seq_chars = sequence_number + (dir_override != 0 ? '*' : '')
+	document.getElementById("SEQUENCE").innerHTML = 'SEQ. ' + seq_chars
 	if(chart.playing_scale) chart.play_scale(sequence_number)
 	if(!dir_override){
-		document.getElementById("REVM").innerHTML = 'REV = ' + str(chart.reversal).toUpperCase()
-		REVERSE_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
+		set_direction_button_colors()
+		set_play_button_chars()
 	}
 }
 
@@ -732,6 +837,7 @@ function update_vol(){
 
 function update_tempo(){
 	tempo = TEMPO_slider.value()
+	storeItem("tempo", tempo)
 	chart.beat = 60/tempo
 	chart.interval_time = chart.beat
 	chart.generate_note_lengths()
@@ -744,34 +850,29 @@ function toggle_drone(){
 	if(drone_playing){ 
 		play_drone()
 		DRONE_button.style('backgroundColor', 'rgb(255,200,95)') //(212,140,0) = col2
-		// DRONE_button.style('borderStyle', 'outset')
-		// document.getElementById("DRONE").style.borderStyle = 'outset'
-		// document.getElementById("DRONE").style.borderWidth = '2'
-		
-		// document.getElementById("DRONE").style.backgroundColor = 'rgb(212,140,0)' // equivalent
 	}
 	else{ 
-		// drone.triggerRelease()
-		drone.stop()
+		drone_env.triggerRelease(drone)
 		DRONE_button.style('backgroundColor', 'rgb(240,240,240)')
-  	// DRONE_button.style('color', 'rgb(0,0,0)')
-		// print(document.getElementById("DRONE").style)
 	}
 }
 
 function play_drone() {
-	// drone.triggerAttack(drone_freq, drone_vol)
 	drone.freq(drone_freq)
+	drone.stop()
 	drone.start()
+	drone_env.triggerAttack(drone)
 }
 
 function toggle_tuning_slider(){
 	if(tuning_slider_shown){ 
 		TUNING_slider.hide()
-		HOLD_KEY_button.show()
-		HOLD_FING_button.show()
-		DRONE_VOL_button.show()
-		VOL_button.show()	
+		if(misc_buttons_shown){
+			HOLD_KEY_button.show()
+			HOLD_FING_button.show()
+			DRONE_VOL_button.show()
+			VOL_button.show()	
+		}
 		if(misc_buttons_shown && !tempo_slider_shown) SAVE_CHART_button.show()
 		tuning_slider_shown = false
 		TUNING_button.style('backgroundColor', 'rgb(240,240,240)')
@@ -794,6 +895,7 @@ function toggle_tuning_slider(){
 			if(chart.playing_scale) chart.play_scale()
 			if(drone_playing) play_drone()
 		}
+		storeItem("tuning", tuning)
 	}
 	else{
 		//if (tempo_slider_shown) toggle_tempo_slider()
@@ -867,16 +969,24 @@ function toggle_vol_slider(){
 	}
 }
 
+let sequence_slider_shown_time = 0
 
 function toggle_sequence_slider(){
 	if(sequence_slider_shown){ 
 		SEQUENCE_slider.hide()
-		REVERSE_MODE_button.hide()
+		REVERSE_button.hide()
+		FORWARD_button.hide()
+		BOTH_DIR_button.hide()
+		LOOP_button.hide()
 		PLACEHOLDER2_button.hide()	
 		OCT_RADIO.hide()
 		sequence_slider_shown = false
 		SEQ_SELECT_button.style('backgroundColor', 'rgb(240,240,240)')
-		if(sequence_number == sequence_number_temp && !octaves_changed && !reverse_mode_switched){
+		const shown_time = millis() - sequence_slider_shown_time
+		if(shown_time < 1000 &&
+			sequence_number == sequence_number_temp && 
+			!octaves_changed && 
+			!reverse_mode_switched){
 			random_sequence()
 		}
 		reverse_mode_switched = false
@@ -885,14 +995,18 @@ function toggle_sequence_slider(){
 	else{
 		PLACEHOLDER2_button.show()	
 		SEQUENCE_slider.show()
-		REVERSE_MODE_button.show()
-		sequence_slider_shown = true; 
+		REVERSE_button.show()
+		FORWARD_button.show()
+		BOTH_DIR_button.show()
+		LOOP_button.show()
+		set_direction_button_colors()
+		sequence_slider_shown = true
+		sequence_slider_shown_time = millis()
 		SEQ_SELECT_button.style('backgroundColor', 'rgb(255,200,95)')
 		sequence_number_temp = sequence_number
 		OCT_RADIO.show()
 	}
 }
-
 
 var starting_note, starting_octave, new_instrument
 
@@ -1018,7 +1132,7 @@ function update_scale(history=false){
 			RAND_MODE_button.style('backgroundColor', 'rgb(240,190,190)')
 		}
 		else{
-			document.getElementById("RAND_MODE").innerHTML = 'RAND MODE'
+			document.getElementById("RAND_MODE").innerHTML = 'MODE 🔀'
 			RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 		}
 		MODE_INC_button.style('backgroundColor', 'rgb(240,240,240)')
@@ -1089,6 +1203,7 @@ function update_key(){
 	if(chart.playing_scale) chart.play_scale()
 	if(drone_playing) play_drone()
 	if(show_info) generate_info_display()
+	storeItem("key_name", key_name)
 }
 
 

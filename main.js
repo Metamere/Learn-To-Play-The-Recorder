@@ -8,14 +8,17 @@ let default_previous_instrument = "Alto" // for quick toggle ability. Changes du
 var default_scale_name = "Major"
 var default_mode_shift = 0
 var key_name // = "C"
+var stored_key_name, stored_mode_shift, stored_repeat_state
 var octaves_to_play = 1
 var pitch_bend_semitones = 2
 var default_tuning = 440 // Hz - can vary slightly between recorders, usually in the range 440-444. 
-var tuning = default_tuning
+var tuning// = default_tuning
 			// Some might default a bit higher because they can be tuned lower by pulling out the bottom piece a bit.
-var tempo = 200 // for scale playback
-var default_vol = 0.35 // volume
+var default_tempo = 120 // for scale sequence playback
+var default_vol = 0.35
 var default_drone_vol = 0.15
+var default_sequence_number = 1
+var default_octaves_to_play = 1
 var nominal_vol, nominal_drone_vol, vol, drone_vol, effects_volume_compensation
 var effects_on
 const default_dry_wet_ratio = 0.25
@@ -62,6 +65,7 @@ var scale_index
 var scales_history_list = []
 var scale_history_index
 var diatonic
+var playing_paused = false
 
 var	mode_shift_reference_index
 var mode_shift_temp_index = null
@@ -71,6 +75,7 @@ var instrument_select, scale_select, key_select, mode_select
 var scale_pattern, frequency, frequency_temp
 var chart_x, chart_y, chart_above, chart_h, chart_hy, v_space
 var AR_debug = false
+let sequence_chart_buffer
 // var AR_debug = true
 
 var density
@@ -82,7 +87,8 @@ function preload() {
 	
 	drone = new p5.Oscillator()
 	drone.setType('sawtooth')
-	drone_env = new p5.Envelope(1, 0, 1, 3)
+	drone_env = new p5.Envelope()
+	drone_env.setADSR(2, 0.4, 1, 1)
 	
 	default_vol = lookup_item("default_vol", default_vol)
 	default_drone_vol = lookup_item("default_drone_vol", default_drone_vol)
@@ -116,7 +122,7 @@ function preload() {
 	
 	osc.connect(LPF)
 	
-	// drone.connect(drone_env)
+	// drone_env.connect(drone)
 	// drone_env.connect(drone_LPF)
 	drone.connect(drone_LPF)
 
@@ -131,12 +137,20 @@ function preload() {
 		reverb.connect(delay)
 	}
 
-
-
 	img = loadImage('DSCF8169_v1.jpg') // My trusty wooden alto recorder that I bought used
 
+	// other values to save and load: waveform on/off, show/hide fingerings state, condense notes state 
 
-	// other values to save and load: tempo, tuning, waveform on/off, sequence number, OTP, key 
+	tempo = lookup_item("tempo", default_tempo)
+	dir_override = lookup_item("dir_override", 0)
+	stored_repeat_state = lookup_item("repeat_state", 0)
+	stored_key_name = lookup_item("key_name", '')
+	stored_mode_shift = lookup_item("mode_shift", default_mode_shift)
+	mode_shift = stored_mode_shift
+	tuning = lookup_item("tuning", default_tuning)
+	sequence_number = lookup_item("sequence_number", default_sequence_number)
+	sequence_number = lookup_item("sequence_number", default_sequence_number)
+	octaves_to_play = lookup_item("octaves_to_play", default_octaves_to_play)
 	instrument_name = lookup_item("instrument_name", default_instrument_name)
 	previous_instrument = lookup_item("previous_instrument", default_previous_instrument)	
 	instrument_obj = instruments_arr.find(x => x.name === instrument_name)
@@ -144,9 +158,9 @@ function preload() {
 	scale_name = lookup_item("scale_name", default_scale_name)
 	diatonic = (scale_name == 'Major' || scale_name == 'natural minor' ||
 		scale_name == 'Major Hexatonic' || scale_name == 'Major Pentatonic' || scale_name == 'minor pentatonic')
-	if(mode_shift !== default_mode_shift){
-		mode_shift = lookup_item("mode_shift", default_mode_shift)
-	}
+	// if(mode_shift !== default_mode_shift){
+	// 	mode_shift = lookup_item("mode_shift", default_mode_shift)
+	// }
 	scale_obj = scales_arr.find(x => x.name === scale_name)
 	scale_pattern = scale_obj.pattern
 	pixelDensity(displayDensity())
@@ -167,7 +181,7 @@ function lookup_item(lookup_key, default_value){
 	if (lookup_data === null){
 		storeItem(lookup_key, default_value)
 		lookup_data = default_value
-	} 
+	}
 	
 	return lookup_data
 // let lookup_data = getItem(lookup_key);
@@ -182,7 +196,6 @@ function setup(initial=true) {
 		W = window.innerWidth
 		H = window.innerHeight
 		mobile = true
-		// W -= 25
 		U = min(int(W/30), int(H/16))
 		display_waveform = false
 	}
@@ -195,42 +208,69 @@ function setup(initial=true) {
 	}
 	H_scale = H/1800
 
-	// screen aspect ratios ---------------------------------------
-	// PC = 2560x1440 => 1707/960 (1.5x zoom?) = 16/9 = 1.778
-	// tablet PC = 2160x1440 => 1440/960 (1.5x zoom) = 1.5
-	// S22 phone = 2340x1080 => 694/320 (3.375x zoom? whut?) = 2.1667 shifts to 2.16875 with subtraction?
-	// pixel density = 3.375. Wow. 
-	// fire tablet = 1280x800 => 640/400? = 1.6
-	// if(W/H > 2.2) display_waveform = false
-
 	debug_indicator_location = [10.5 * U, 4.5 * U]
-	chart_x = 1.5*U
-	chart_h = 8*U
-	chart_y = min(8*U, H - chart_h)
+	chart_x = 1.5 * U
+	chart_x2 = 29.53 * U
+	chart_h = 8 * U
+	chart_y = min(8 * U, H - chart_h)
 	chart_hy = chart_y + chart_h
 	chart_above = chart_y - 1.45*U
 	const v_space_total = H - chart_y - chart_h
-	v_space = min(3*U, v_space_total)
+	v_space = min(3 * U, v_space_total)
 	tall_display = (v_space_total > 4*U)
 
-	L = W - 3*U
-	text_size = U * 0.63 //min(U, v_space*0.15)
+	L = W - 3 * U
+	text_size = U * 0.63
 	if(tall_display){
 		text_size = U
 		L = W 
 	}
 
-	// console.log('v_space = ' + v_space, ', U = ' + U)
-	// print(chart_y, chart_h, H - (chart_y + chart_h))
+	// const M = U * (0.4 - 0.15 * (octaves_to_play - 1))
+	// const x1 = chart_x2 - 14 * U
+	// const x2 = chart_x2
+	// const y1 = 1 * U
+	// const y2 = chart_y - 1.565 * U
+		
+	// seq_display.x0 = x1
+	// seq_display.y0 = y1
+	// seq_display.x1 = x1 + M
+	// seq_display.y1 = y1 + M
+	// seq_display.x2 = x2 - M
+	// seq_display.y2 = y2 - M
+	// seq_display.x3 = x2
+	// seq_display.y3 = y2
+	// seq_display.w = int(x2 - x1)
+	// seq_display.h = int(y2 - y1)
 
-	if(initial)	createCanvas(W, H);
-	else resizeCanvas(W, H)
+	if(initial){
+		createCanvas(W, H)
+		// sequence_chart_buffer = createGraphics(seq_display.w, seq_display.h)
+		// console.log(seq_display.w, seq_display.h)
+	}	
+	else{
+		resizeCanvas(W, H)
+		// sequence_chart_buffer.resizeCanvas(seq_display.w, seq_display.h)
+	} 
 
 	chart = new fingering_chart(chart_x, chart_y);
 	create_controls(initial)
 	update_instrument()
 	update_scale()
-	if(mode_shift !== default_mode_shift) mode_change(mode_shift)
+	if(stored_key_name){
+		key_select.value(stored_key_name)
+		update_key()
+	} 
+	if(stored_mode_shift){
+		mode_shift = stored_mode_shift
+		mode_change(stored_mode_shift)
+	} 
+	if(stored_repeat_state){
+		chart.repeat = stored_repeat_state
+		if(chart.repeat) LOOP_button.style('backgroundColor', 'rgb(255,200,95)')
+	 	else LOOP_button.style('backgroundColor', 'rgb(240,240,240)')
+		set_play_button_chars()
+	}
 }
 
 function play_oscillator(frequency, duration=0) {
@@ -249,7 +289,7 @@ let redraw_count = 0
 let note_start_time = 0
 let note_duration = 0
 function draw() {
-	if(stylo_mode && playing){
+	if(stylo_mode && playing && !(chart.playing_scale || playing_paused)){
 		note_duration = ~~millis() - note_start_time 
 		if(note_duration > 1000){
 			const vibrato_delta = min(1, map(note_duration, 1000, 1500, 0, 1)) * 0.15 * sin(frameCount * 0.4)
@@ -268,7 +308,7 @@ function draw() {
 			noStroke()
 			fill(255)
 			rectMode(CORNERS)
-			rect(chart_x*1.02,chart_hy, L, chart_hy + v_space)
+			rect(chart_x * 1.02, chart_hy, W, chart_hy + v_space * 2)
 			pop()
 		}
 	}
@@ -446,13 +486,18 @@ function key_shift(input_note=null){
 
 function condense_notes(){
 	condensed_notes = !condensed_notes
+	COND_button.style('backgroundColor', 'rgb(240,240,240)')
+	HIDE_FING_button.style('backgroundColor', 'rgb(240,240,240)')
 	if(condensed_notes){
-		COND_button.style('backgroundColor', 'rgb(255,200,95)')
+		if(hide_fingering) document.getElementById("COND").innerHTML = '|||'
+		else document.getElementById("COND").innerHTML = '⁞⁞⁞'
 		document.getElementById("MODE_MODE").innerHTML = 'RELATIVE MODE < >'
 		MODE_MODE_button.style('backgroundColor', 'rgb(180,180,180)')
 		RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 	}
 	else{
+		if(hide_fingering) document.getElementById("COND").innerHTML = '||||||'
+		else document.getElementById("COND").innerHTML = '⁞⁞⁞⁞⁞⁞'
 		COND_button.style('backgroundColor', 'rgb(240,240,240)')
 		if(mode_mode == 'parallel'){
 			document.getElementById("MODE_MODE").innerHTML = 'PARALLEL MODE < >'
@@ -463,7 +508,6 @@ function condense_notes(){
 			MODE_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 			RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 		}
-	
 	}
 	update_chart = true
 	chart.create_notes(update_label=true,update_color=true)
@@ -475,8 +519,17 @@ function condense_notes(){
 function hide_fingerings(){
 	if(note_count != 12) return
 	hide_fingering = !hide_fingering
-	if(hide_fingering) HIDE_FING_button.style('backgroundColor', 'rgb(255,200,95)')
-	else HIDE_FING_button.style('backgroundColor', 'rgb(240,240,240)')
+
+	if(hide_fingering){
+		if(condensed_notes)	document.getElementById("COND").innerHTML = '|||'
+		else document.getElementById("COND").innerHTML = '||||||'
+		document.getElementById("HIDE").innerHTML = 'SHOW ◑|◉|◒'
+	} 
+	else{
+		if(condensed_notes)	document.getElementById("COND").innerHTML = '⁞⁞⁞'
+		else document.getElementById("COND").innerHTML = '⁞⁞⁞⁞⁞⁞'
+		document.getElementById("HIDE").innerHTML = 'HIDE ◑|◉|◒'
+	} 
 	update_chart = true
 	set_stylo_mode()
 }
@@ -484,9 +537,15 @@ function hide_fingerings(){
 function set_stylo_mode(){
 	if (hide_fingering && condensed_notes){
 		stylo_mode = true
+		HIDE_FING_button.style('backgroundColor', 'rgb(255, 201, 154)')
+		COND_button.style('backgroundColor', 'rgb(255, 201, 154)')
 		// notes_count_input.show() // since it's not working properly, best hide it.
 	}
 	else{
+		if(hide_fingering) HIDE_FING_button.style('backgroundColor', 'rgb(255,200,95)')
+		else HIDE_FING_button.style('backgroundColor', 'rgb(240,240,240)')
+		if(condensed_notes) COND_button.style('backgroundColor', 'rgb(255,200,95)')
+		else COND_button.style('backgroundColor', 'rgb(240,240,240)')
 		stylo_mode = false
 		// if(note_count == 12) notes_count_input.hide()
 	}
@@ -581,32 +640,41 @@ function TOGL_instrument2(){
 	previous_instrument = temp_name
 }
 
-function play_scale(){
-	// let elapsed_click_hold_time = millis() - play_button_time
-	let text1
-	let text2
-	// if( elapsed_click_hold_time > 500){ 
-	if(chart.playing_scale){
-		chart.repeat = !chart.repeat
-		if(chart.repeat){ 
-			text2 = 'LOOP'
-			PLAY_button.style('backgroundColor', 'rgb(255,200,95)')
-			// SHUF_SEQ_button.show()
-		}								 
-		else{
-			text2 = 'ONCE'
+function play_scale(restart = true){
+	if(restart){
+		if(chart.playing_scale){
+			chart.playing_scale = false
+			playing_paused = false
 			PLAY_button.style('backgroundColor', 'rgb(240,240,240)')
-			// SHUF_SEQ_button.hide()
+			chart.generate_sequence_display()
 		}
-		document.getElementById('PLAY').innerHTML = 'PLAY ' + text2;
+		else{
+			chart.play_scale(sequence_number)
+			PLAY_button.style('backgroundColor', 'rgb(255,200,95)')
+		}
 	}
-	else chart.play_scale(sequence_number)
+	else{
+		if(playing_note){
+			chart.playing_scale = !chart.playing_scale
+			playing_paused = !playing_paused
+			if(chart.playing_scale)	PLAY_button.style('backgroundColor', 'rgb(255,200,95)')
+			else PLAY_button.style('backgroundColor', 'rgba(182, 139, 60, 1)')
+		}
+		else{
+			chart.play_scale(sequence_number)
+			PLAY_button.style('backgroundColor', 'rgb(255,200,95)')
+		}
+	}
 }
 
 var show_info = true
 var show_seq = true
 function in_seq_display(x, y){
-	return (seq_display.x1<=x && x<=seq_display.x2 && seq_display.y1<=y && y<=seq_display.y2);
+	if(vol_slider_shown || drone_vol_slider_shown || tempo_slider_shown || 
+		tuning_slider_shown || save_confirm_shown){
+		return
+	} 
+	return (seq_display.x1 <= x && x <= seq_display.x2 && seq_display.y1 <= y && y <= seq_display.y2);
 }
 
 const interval_colors = [ 
@@ -633,32 +701,31 @@ function generate_info_display(){
 	else shifted_scale_pattern = scale_pattern
 	
 	push()
-	translate(seq_display.x0-seq_display.x3,0)
+	translate(seq_display.x0 - seq_display.x3, 0)
 	rectMode(CORNERS)
 	fill(255)
 	noStroke()
-	rect(seq_display.x0,0, seq_display.x3,seq_display.y3)
+	rect(seq_display.x0, 0, seq_display.x3, seq_display.y3)
 	let scale_factor = 6
-	let size = seq_display.h/scale_factor
-	textSize(size*0.95)
+	let size = seq_display.h / scale_factor
+	textSize(size * 0.95)
 	
 	let len = scale_pattern.length
 	push()
 	stroke(255)
-	// stroke(st_col)
 	
 	let step_width = U * 0.92
 	strokeWeight(step_width*0.1)
 	let x_pos = seq_display.x0
-	// let y_pos = seq_display.y1 + size*0.6
-	let y_pos = U*(0.8 + 0.1*mobile)
-	let ht = 1.2*step_width
+
+	let y_pos = U * (0.8 + 0.1 * mobile)
+	let ht = 1.2 * step_width
 	
 	colorMode(HSB,70,100,100,100)
-	let col = interval_colors[shifted_scale_pattern[0]-1]
+	let col = interval_colors[shifted_scale_pattern[0] - 1]
 	col.push(90)
 	fill(col)
-	text(len, x_pos + step_width*12.44, y_pos + ht*0.2)
+	text(len, x_pos + step_width * 12.44, y_pos + ht * 0.2)
 	for(let i=0; i < len; i++){
 		let step_size = shifted_scale_pattern[i]
 		col = interval_colors[step_size-1]
@@ -666,11 +733,9 @@ function generate_info_display(){
 		fill(col)
 		let x2 = x_pos + step_size*step_width
 		rect(x_pos, y_pos, x2, y_pos + ht)
-		// if(i < len - 1){
 		x_pos = x2
-		// }
+
 	}
-	// text(len,x_pos + step_width*0.44,y_pos + ht*0.2)
 	pop()
 	fill(50,120)
 	x_pos = seq_display.x0
@@ -680,11 +745,8 @@ function generate_info_display(){
 	fill(255)
 	for(let i=0; i < 13; i++){
 		circle(x_pos + i * step_width, y_pos + ht*0.5, step_width*0.37)		
-		// fill(0,150)
-		// circle(x_pos + i * step_width, y_pos + ht*0.5, step_width*0.1)
 	}	
 	
-	// print(scale_obj.alt.length)
 	let alt_index = min(mode_shift,scale_obj.alt.length-1)
 	let fields = scale_obj.alt[alt_index].length
 
@@ -692,7 +754,7 @@ function generate_info_display(){
 	fill(20)
 
 	let scale_str
-	let pattern_str = ''
+	// let pattern_str = ''
 	let shift = 1
 	if(len < note_count){
 		// mode_proper_name = 
@@ -764,16 +826,16 @@ function generate_info_display(){
 	else scale_str = str(note_count) + '-TET'
 	let y_pos2 = U * 1.35 
 	push()
-		if(mode_shift > 0) fill(212*0.85,140*0.7,0)
-		text(scale_str, seq_display.x1, U*(1.9 + 0.1*mobile))
+		if(mode_shift > 0) fill(212 * 0.85, 140 * 0.7, 0)
+		text(scale_str, seq_display.x1, U * (2 + 0.1 * mobile))
 		fill(160)
 		if(scale_pattern.length != 12) text(' _'.repeat(15), seq_display.x0, y_pos2 + y_pos)
 		//text(pattern_str, seq_display.x1, seq_display.y0)
 	pop()
 	if(note_count == 12){
-		scale_factor = 6 + 0.5*max(0,(fields-3))
-		size = seq_display.h/scale_factor
-		textSize(size*0.95)
+		scale_factor = 6 + 0.5 * max(0,(fields - 3))
+		size = seq_display.h / scale_factor
+		textSize(size * 0.95)
 		for(i = 0; i < fields; i++){
 			let alt_text = scale_obj.alt[alt_index][i]
 			text(alt_text, seq_display.x1, y_pos2 + size * (i+shift))
@@ -846,16 +908,19 @@ function input_pressed(){
 		effects_controls_primed = true
 	}
 	
-	// if (in_seq_display(mouseX, mouseY)){
-	// 	if(show_info){
-	// 		show_info = false
-	// 		chart.generate_sequence_display()
-	// 	}
-	// 	else{
-	// 		show_info = true
-	// 		generate_info_display()
-	// 	}
-	// }
+	if (in_seq_display(mouseX, mouseY)){
+		play_scale(false)
+		// if(chart.playing_scale){
+		// }
+		// if(show_info){
+		// 	show_info = false
+		// 	chart.generate_sequence_display()
+		// }
+		// else{
+		// 	show_info = true
+		// 	generate_info_display()
+		// }
+	}
 }
 
 function update_volumes(){
@@ -978,6 +1043,8 @@ function input_released() {
 	// 	pitch_class_set.push(position)
 	// }	
 
+let saved_chart_graphics = false
+
 function save_chart(){
 	let rows = 4
 	let cols = 3
@@ -985,12 +1052,21 @@ function save_chart(){
 	let margin = int(U * 0.2)
 	let W1 = int(chart_end - chart_x)
 	let H1 = int(chart_y + chart_h - chart_above)
-	let header_H = int(H1*0.15) + margin
+	let footer_H = int(H1 * 0.15) + margin
 	let W2 = cols * W1 + (cols - 1) * margin
-	let H2 = rows * H1 + (rows - 1) * margin + header_H
+	const w2 = W2/2
+	let H2 = rows * H1 + (rows - 1) * margin + footer_H
 	// print('W1 = ' + W1 + ', H1 = ' + H1 )
 	// print('W2 = ' + W2 + ', H2 = ' + H2 )
-	full_chart = createGraphics(W2, H2)
+	if(saved_chart_graphics){
+		full_chart.resizeCanvas(W2, H2)
+	}
+	else{
+		saved_chart_graphics = true
+		full_chart = createGraphics(W2, H2)
+	}
+
+	full_chart.background(0)
 
 	for(let count = 0; count < 12; count++){
 		// key_shift(chart.notes[count]) // this doesn't work for condensed notes version
@@ -1015,21 +1091,21 @@ function save_chart(){
 	let save_str = (mode_shift == 0) ? scale_name : mode_select.value().slice(mode_select.value().indexOf('· ')+2) // remove the roman numerals
 	
 	let WP = seq_display.w * 0.875
-	let HP = U*1.2
-	let pattern_representation = better_get(U*1.0, U*(0.7 + 0.1*mobile), WP, HP);
+	let HP = U * 1.2
+	let pattern_representation = better_get(U * 1.0, U * (0.7 + 0.1*mobile), WP, HP);
 	
-	full_chart.translate(0, (H2 - header_H + margin))
+	full_chart.translate(0, (H2 - footer_H + margin))
 	full_chart.noStroke()
 	full_chart.fill(255)
-	full_chart.rect(0,0, W2, (header_H - margin/2))
+	full_chart.rect(0,0, W2, (footer_H - margin/2))
 	full_chart.fill(0)
-	full_chart.textSize(header_H * 0.75)
+	full_chart.textSize(footer_H * 0.75)
 	full_chart.textAlign(RIGHT,CENTER)
-	let text_pos = header_H*0.45
-	full_chart.text(save_str, W2*0.4, text_pos)
-	full_chart.image(pattern_representation, W2*0.425, header_H*0.03, WP, HP);
+	let text_pos = footer_H * 0.45
+	full_chart.text(save_str, w2 - WP * 0.8, text_pos)
+	full_chart.image(pattern_representation, w2 - WP * 0.5, footer_H * 0.03, WP, HP);
 	full_chart.textAlign(LEFT,CENTER)
-	full_chart.text(instrument_name, W2*0.6, text_pos)
+	full_chart.text(instrument_name, w2 + WP * 0.8, text_pos)
 	let condensed_str = condensed_notes? ' - condensed' : ''
 	save(full_chart, instrument_name + ' - ' + save_str + condensed_str + ".png");
 }
@@ -1085,37 +1161,44 @@ function next_scale(){
 }
 
 function keyPressed() {
-	if (keyCode === LEFT_ARROW) mode_decrease()
-	if (keyCode === RIGHT_ARROW) mode_increase()
-	if (keyCode === DOWN_ARROW) scale_increase()
-	if (keyCode === UP_ARROW) scale_decrease()
-	if (key === 'c') mode_mode_switch()
-	if (key === 'z') prev_scale()
-	if (key === 'x') next_scale()
-	
-	if (key === 'l'){
-		console.log(getItem("scale_name") + ', ' + getItem("mode_shift")  + ', ' + getItem("previous_instrument") + ', ' + getItem("instrument_name"))
-	} 
-	
-	if (key === 'm'){
-		if(scale_name === "Major") scale_name = "natural minor"
-		else scale_name = "Major"
-		scale_select.value(scale_name)
-		if (note_count == 12) update_scale()
+	const key_L = key.toLowerCase()
+	if(keyIsDown(SHIFT)){
+		if(key_L === 's') save_chart()	
+			else if (key_L === 'q') clearStorage()
+				else if (key_L === 'd') debug_mode = !debug_mode
+		else if (key_L === 'l'){
+			console.log(getItem("scale_name") + ', ' + getItem("mode_shift")  + ', ' + getItem("previous_instrument") + ', ' + getItem("instrument_name"))
+		} 
 	}
-	if (key === 'w'){
-		display_waveform = !display_waveform
-		if(!display_waveform){
-			push()
-			fill(255)
-			rectMode(CORNERS)	
-			rect(chart_x*1.02,chart_hy, W, H)
-			pop()
+	else{
+		if (keyCode === LEFT_ARROW) mode_decrease()
+		else if (keyCode === RIGHT_ARROW) mode_increase()
+		else if (keyCode === DOWN_ARROW) scale_increase()
+		else if (keyCode === UP_ARROW) scale_decrease()
+		else if (key_L === 'c') mode_mode_switch()
+		else if (key_L === 'z') prev_scale()
+		else if (key_L === 'x') next_scale()
+		else if (key_L === 'd') toggle_drone()
+		else if (key_L === 'p') play_scale(true)
+		else if (key_L === ' ') play_scale(false)
+		else if (key_L === 'm'){
+			mode_mode_switch()
+		}
+		else if (key_L === 'w'){
+			display_waveform = !display_waveform
+			if(!display_waveform){
+				push()
+				fill(255)
+				rectMode(CORNERS)	
+				rect(chart_x * 1.02, chart_hy, W, H)
+				pop()
+			}
+		}
+		else{
+			const num = ~~key
+			if (num == 1 || num == 2) {
+				set_octaves_to_play(num)
+			}
 		}
 	}
-	
-	if (key === 's') save_chart()	
-	if (key === 'd') debug_mode = !debug_mode
-	if (key === 'q') clearStorage()
-	
 }
