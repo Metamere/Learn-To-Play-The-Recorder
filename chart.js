@@ -21,16 +21,16 @@ var note_index, note_index_temp
 const seq_display = {}
 
 // var sequence_number = 1
-const seq_arr = [];
-let n = 16;
+const seq_arr = []
+let n = 17 // total number of different sequences 
 while (n--) seq_arr[n] = n + 1
 
 class fingering_chart {
 	
 	constructor(x, y) {
 		bend_factor = pow(2, pitch_bend_semitones/note_count)
-		this.x = x;
-		this.y = y;
+		this.x = x
+		this.y = y
 		this.above = this.y - U * 1.45
 		this.note_height = chart_h
 		this.bend_threshold = int(this.note_height / (15 - 7 * mobile))
@@ -44,9 +44,8 @@ class fingering_chart {
 		} 
 		else this.length = recorder_fingerings.length - bass_instrument // exclude last note for bass instruments
 		this.on_notes = 0
-		this.display_staff = false
 
-		this.repeat = false
+		this.repeat = stored_repeat_state
 		this.notes_sequence = []
 		this.notes_sequence_lengths = []
 		this.scale_notes = []
@@ -66,14 +65,11 @@ class fingering_chart {
 			this.OTP = max(2, octaves_to_play) // Change to more octaves for 5-TET
 			octaves_to_play = this.OTP
 		}
-		// this.OTP = (note_count < 12) ? 2 : 1 // octaves to play.
 		this.beat = 60 / tempo
 		this.beats_per_measure = 4
 		this.interval_time = this.beat
 		this.current_note_index = 0
 		this.sequence_note_index = 0
-		// this.sequence_note_index_init = 0
-		// this.sequence_index = 0
 		this.dir = 1
 		this.time = 0
 		this.playing_scale = false
@@ -82,6 +78,7 @@ class fingering_chart {
 		this.started = false
 		if(dir_override == 0 || dir_override == 2) this.reversal = true
 		this.reversal_mode = 2 // 2,1,-1
+		this.default_reversal_setting = false
 		this.first_scale_note = null
 		this.last_scale_note = null
 		update_seq_display = true
@@ -89,15 +86,21 @@ class fingering_chart {
 
 	_handlePlayingScale() {
 		let elapsed_time = millis() * 0.001 - this.time
-		if (!(elapsed_time > this.interval_time)) return
-
-		redraw_notes = true
-		this.time = millis() * 0.001
-
+		// Use a capped wait when the sequence hasn't started yet so very low BPM
+		// doesn't delay the initial note for too long.
+		let wait_time = this.interval_time
+		if (!this.started) {
+			wait_time = min(this.interval_time, 1.0) // cap to 1 second
+		}
+		if (!(elapsed_time > wait_time)) return
+		
 		if (this.started) {
 			this.current_note_index++
 			this.sequence_note_index += this.dir
 		}
+
+		redraw_notes = true
+		this.time = millis() * 0.001
 		this.interval_time = this.notes_sequence_lengths[this.current_note_index]
 
 		if (playing_note) playing_note.mouseReleased()
@@ -111,25 +114,37 @@ class fingering_chart {
 
 		this.started = true
 		playing_note = this.scale_notes[min(max(index2 + this.index_offset, 0), this.scale_notes.length - 1)]
-		frequency = playing_note.frequency
-		// console.log(playing_note.note_display_name, playing_note.scale_index - 1, this.sequence_note_index)
-
-		playing_note.mousePressed(this.interval_time * 0.8)
+		if(playing_note){
+			frequency = playing_note.frequency
+			// console.log(playing_note.note_display_name, playing_note.scale_index - 1, this.sequence_note_index)
+			playing_note.mousePressed(this.interval_time * 0.8)
+		}
+		else{
+			console.log('no playing_note')
+		}
 		redraw_waveform = true
 
-		this.generate_sequence_display(this.sequence_note_index)
+		if(show_seq) this.generate_sequence_display(this.sequence_note_index)
 
+		// reset position when reaching end
 		if (this.current_note_index == this.notes_sequence.length - 1) {
-			this.current_note_index = 0
-			this.index_offset = 0
-			this.started = false
+				this.current_note_index = 0
+				this.index_offset = 0
+				this.started = false
+				// reset timing so that repeat doesn't immediately advance; start the wait anew
+				this.time = millis() * 0.001
 			if (this.repeat) {
 				if (dir_override >= 0) this.sequence_note_index = 0
-				if (dir_override == -1 || (this.reversal && (dir_override == 0 || dir_override == 2))) this.sequence_note_index = this.notes_sequence.length - 1
+				if (dir_override == -1 || 
+					(this.reversal && (dir_override == 0 || dir_override == 2))){
+						this.sequence_note_index = this.notes_sequence.length - 1
+					}
 			}
 
+			// change direction if needed
 			if ((this.dir == 1 && this.reversal) || this.repeat) {
-				if (this.reversal && (dir_override == 0 || dir_override == 2)) {
+				if ((dir_override == 0 && this.dir == -1) || 
+				(this.reversal && (dir_override == 0 || dir_override == 2))) {
 					this.dir *= -1
 					if (this.dir == 1) {
 						this.sequence_note_index = 0
@@ -206,15 +221,18 @@ class fingering_chart {
 
 		drone_freq = 0
 		this.on_notes = 0
-		this.shifted_scale_pattern = []
 		for (let i = 0; i < this.length; i++) {
 			let val = 0
 			if (i == position) {
 				if (i == octave_start || (i - octave_start) % note_count == 0) {
 					val = 2
 					if (drone_freq == 0) {
-						let multiplier = (this.freqList[i] * 0.5 > 55) ? 0.25 : 0.5
-						drone_freq = this.freqList[i] * multiplier
+						let multiplier = 0.25
+						const target_freq = this.freqList[i]
+						while(drone_freq < 40){
+							drone_freq = target_freq * multiplier
+							multiplier *= 2
+						}
 					}
 				} else val = 1
 				position += scale_pattern[ind]
@@ -229,20 +247,20 @@ class fingering_chart {
 		this.scale_note_names_flat = []
 		// if (this.key_signature.length > 2) accidental_count = 6
 		// else {
-			accidental_count = 0
-			for (let i = 0; i < 12; i++) {
-				if (fingering_pattern[i] > 0){
-					if(notes_arr[i].length > 1){
-						accidental_count++
-						this.scale_note_names_flat.push(notes_arr[i].slice(3))
-						this.scale_note_names_sharp.push(notes_arr[i].slice(0,2))
-					}	
-					else{
-						this.scale_note_names_flat.push(notes_arr[i])
-						this.scale_note_names_sharp.push(notes_arr[i])
-					}
-					// this.scale_note_names.push(notes_arr[i][0])
+		accidental_count = 0
+		for (let i = 0; i < 12; i++) {
+			if (fingering_pattern[i] > 0){
+				if(notes_arr[i].length > 1){
+					accidental_count++
+					this.scale_note_names_flat.push(notes_arr[i].slice(3))
+					this.scale_note_names_sharp.push(notes_arr[i].slice(0,2))
+				}	
+				else{
+					this.scale_note_names_flat.push(notes_arr[i])
+					this.scale_note_names_sharp.push(notes_arr[i])
 				}
+				// this.scale_note_names.push(notes_arr[i][0])
+			}
 			// }
 		}
 		// if(debug_mode){
@@ -322,10 +340,10 @@ class fingering_chart {
 		lowest_note = instrument_obj.lowest
 
 		let current_freq
-		this.freqList = [];
+		this.freqList = []
 		for (let i = 0; i < this.length; i++) {
-			current_freq = tuning * Math.pow(2, (lowest_note + i) / note_count);
-			this.freqList.push(current_freq);
+			current_freq = tuning * Math.pow(2, (lowest_note + i) / note_count)
+			this.freqList.push(current_freq)
 		}
 	}
 
@@ -337,18 +355,17 @@ class fingering_chart {
 		// else this.width_factor = min(2, 28/(Math.ceil(this.on_notes/2)*2))
 		// else this.width_factor = min(2, Math.floor(28/this.on_notes*4)/4)
 		let w = U * this.width_factor
-		var x = 0;
+		var x = 0
 		let h = this.note_height
-		var y = 0;
+		var y = 0
 		fill(0);
-		noStroke();
-		textAlign(CENTER, TOP);
-		textSize(w / 4);
+		noStroke()
+		textAlign(CENTER, TOP)
+		textSize(w / 4)
 
 		let COL
 		color_count = 0
-		if (instrument_obj.key[0] === 'F')
-			color_count += 3
+		if (instrument_obj.key[0] === 'F') color_count += 3
 		push()
 		fill(255)
 		// clear the old notes --------------
@@ -383,21 +400,20 @@ class fingering_chart {
 			}
 			let freq = this.freqList[i]
 			scale_index++
-			this.notes.push(new note(this.x + x, this.y + y, w, h, COL, freq, i, scale_index, update_label, update_color, this.accidental_type));
+			this.notes.push(new note(this.x + x, this.y + y, w, h, COL, freq, i, scale_index, update_label, update_color, this.accidental_type))
 			if(!diatonic && key_sig_note) key_sig = this.notes[this.notes.length-1].note_display_name
-			x += w;
+			x += w
 		}
 		chart_end = this.x + x + w * 0.0125 // * 0.05?
 		push()
 		strokeWeight(int(U / 14))
 		strokeCap(SQUARE)
 		stroke(0)
-		line(this.x, this.y - U * 1.475, chart_end, this.y - U * 1.475) // upper horizontal divider line
+		line(this.x, Math.ceil(this.y - U * 1.475), chart_end, Math.ceil(this.y - U * 1.475)) // upper horizontal divider line
 		line(this.x, this.y + U * 0.035, chart_end, this.y + U * 0.035) // lower horizontal divider line
 		pop()
 		if(!diatonic) this.key_signature = [key_sig,accidental_count]
 		note_span = this.last_scale_note_index - this.first_scale_note_index
-		// print(note_span)
 	}
 
 	draw() {
@@ -465,8 +481,9 @@ class fingering_chart {
 					if(starting_y == null) starting_y = mouseY
 					if (note_index != note_index_temp || pressedNote == null) {
 						if (pressedNote) pressedNote.mouseReleased()
-						note.mousePressed()
-						pressedNote = note;
+						if(stylo_mode) note.mousePressed(0, mouseY/U < 10)
+						else note.mousePressed(0, 0)
+						pressedNote = note
 						frequency = frequency_temp
 						note_index = note_index_temp
 						redraw_waveform = true
@@ -480,7 +497,7 @@ class fingering_chart {
 						const Y_move = abs(mouseY - starting_y)
 						const bend_up = mouseY - starting_y < 0
 						if(Y_move > this.bend_threshold || bend_started){
-							const pitch_bend_factor = min(Y_move/ht*2.5,1)
+							const pitch_bend_factor = min(Y_move / ht * 2.5, 1)
 							// console.log(pitch_bend_factor)
 							bend_started = true
 							pitch_bend_amount = pitch_bend_factor * (bend_up? note.freq_bend_above : note.freq_bend_below)
@@ -552,11 +569,13 @@ class fingering_chart {
 	// }
 	
 	generate_sequence() {
+		// console.log('generate sequence')
 		// maybe have different sets of patterns for 5, 6, 7, and 8 note scales?
-		this.override_OTP = (sequence_number == 16)? 1:this.OTP
+		this.override_OTP = (sequence_number >= 16)? 1 : this.OTP
 		let scale_length = scale_pattern.length * this.override_OTP
 		this.notes_sequence = []
 		let pattern = []
+		this.default_reversal_setting = true
 		if(dir_override == 0 || dir_override == 2) this.reversal = true
 		let X = this.override_OTP
 		let Y = scale_pattern.length
@@ -578,6 +597,7 @@ class fingering_chart {
 				}
 				this.notes_sequence.push(0)
 				this.reversal = false
+				this.default_reversal_setting = false
 				break
 			case 4: // replacement for sequence 4?
 				for (let i = 0; i < (scale_length - 1) * 3; i++) {
@@ -602,6 +622,7 @@ class fingering_chart {
 				}
 				this.notes_sequence.push(scale_length)
 				this.reversal = false
+				this.default_reversal_setting = false
 				break
 			case 7: // ascending descending thirds triplets
 				for (let i = 0; i < (scale_length - 2) * 3; i++) {
@@ -639,6 +660,7 @@ class fingering_chart {
 					this.notes_sequence.push(f)
 				}
 				this.reversal = false
+				this.default_reversal_setting = false
 				break
 			case 11: // triads
 				pattern = [0, 2, 4, 5, 3, 1]
@@ -662,6 +684,7 @@ class fingering_chart {
 					this.notes_sequence.push(f)
 				}
 				this.reversal = false
+				this.default_reversal_setting = false
 				break
 			case 14: // alternating inwards
 				let j = scale_length
@@ -670,10 +693,10 @@ class fingering_chart {
 				for (let i = 0; i < end; i++) {
 					if (i < scale_length) {
 						if (i % 2 == 0) {
-							this.notes_sequence.push(k);
+							this.notes_sequence.push(k)
 							k++
 						} else {
-							this.notes_sequence.push(j);
+							this.notes_sequence.push(j)
 							j--
 						}
 					} else {
@@ -682,15 +705,16 @@ class fingering_chart {
 							else k--
 						}
 						if (i % 2 == 0) {
-							this.notes_sequence.push(k);
+							this.notes_sequence.push(k)
 							k--
 						} else {
-							this.notes_sequence.push(j);
+							this.notes_sequence.push(j)
 							j++
 						}
 					}
 				}
 				this.reversal = false
+				this.default_reversal_setting = false
 				break
 			case 15: // fourths triplets
 				for (let i = 0; i < scale_length * 3; i++) {
@@ -702,11 +726,13 @@ class fingering_chart {
 				for (let i = 0; i < scale_length * 2 + 1; i++) {
 					this.notes_sequence.push((scale_length - 1) * (i % 2) + Math.ceil(i / 2))
 				}
-				// this.OTP = 1
-				// if (note_count < 12) {
-				// 	octaves_to_play = this.OTP
-				// 	OCT_RADIO.value(str(octaves_to_play))
-				// }
+				break
+			case 17: // trill notes
+				for (let i = 0; i < scale_length * 2; i++) {
+					this.notes_sequence.push(i % 2)
+				}
+				this.reversal = false
+				this.default_reversal_setting = false
 				break
 		}
 		if(dir_override == 2){
@@ -722,9 +748,10 @@ class fingering_chart {
 		let beats = 0
 		let note_length = 0
 		for (let i = 0; i < this.notes_sequence.length; i++) {
-			if (tempo > 60 && (i == this.notes_sequence.length - 1)) {
+			if (tempo > 60 && (i == this.notes_sequence.length - 1) && sequence_number < 17) {
 				note_length = 2 * B
-			} else {
+			} 
+			else {
 				if (randomize == true) {
 					if (Math.random() < 0.5 && i > 0) note_length = this.notes_sequence_lengths[i - 1]
 					else note_length = int(random(4, 33)) / 8 * B
@@ -740,29 +767,31 @@ class fingering_chart {
 					}
 				} else note_length = B
 			}
-			this.notes_sequence_lengths.push(note_length)
+			this.notes_sequence_lengths.push(round(note_length,4))
 		}
 		this.interval_time = this.notes_sequence_lengths[0]
 	}
 
-	play_scale(seq_number = 0) {
+	play_scale(restart = false) {
+		// console.log('chart.play_scale, restart = ' + restart)
 		playing_paused = false
-		if (scale_pattern.length * this.override_OTP != scale_notes_length_temp) { // || seq_number > 0){
-			// if(seq_number == 0) seq_number = 1
+		if (scale_pattern.length * this.override_OTP != scale_notes_length_temp) {
 			this.generate_sequence()
 			scale_notes_length_temp = scale_pattern.length * this.override_OTP
 		}
-		if(dir_override < 0) this.sequence_note_index = this.notes_sequence.length - 1
-		else this.sequence_note_index = 0
-
-		if(dir_override == -1){
-			this.dir = -1
-		}	
-		else{
-			this.dir = 1
-		}
+		if(restart){
+			if(dir_override < 0) this.sequence_note_index = this.notes_sequence.length - 1
+			else this.sequence_note_index = 0
+			allow_continue = true
+			this.current_note_index = 0
+			if(dir_override == -1){
+				this.dir = -1
+			}	
+			else{
+				this.dir = 1
+			}
+		} 
 		this.scale_notes = []
-		this.current_note_index = 0
 		let started = false
 		scale_offset = 0
 		let count = 0
@@ -804,19 +833,20 @@ class fingering_chart {
 			seq_display.y2 = y2 - M
 			seq_display.x3 = x2
 			seq_display.y3 = y2
-			seq_display.w = x2 - x1
-			seq_display.h = y2 - y1
+			seq_display.w = int(x2 - x1)
+			seq_display.h = int(y2 - y1)
 		}
+		if(!show_seq) return
 
 		const N = this.notes_sequence.length
 		const x_step = (seq_display.x3 - seq_display.x0 - 2 * M) / (N - 1)
 		const SF = (this.override_OTP == 1) ? 1 : 0.5
-		const wt2 = 5 * SF * 15 * U / 350
 		const min_f = Math.min(...this.notes_sequence)
 		const max_f = Math.max(...this.notes_sequence)
 		const f_span = max(1, max_f - min_f)
 		const y_step = (seq_display.y3 - seq_display.y0 - 2 * M) / f_span
 		const diam = min(x_step * 1.5, y_step * 1.2, 1.95 * M) * 0.9
+    const wt2 = min(5 * SF * 15 * U / 350, diam * 0.5)
 
 		if(playing_note_index == null){
 
@@ -827,7 +857,7 @@ class fingering_chart {
 			strokeCap(ROUND)
 			rect(seq_display.x0 - 1, seq_display.y0 - 1, seq_display.x3 + 1, seq_display.y3 + 1)
 			stroke(30)
-			const wt1 = 30 * SF * U / 350
+			const wt1 = min(30 * SF * U / 350, diam * 0.15)
 
 			strokeWeight(wt1)
 			fill(30)
@@ -875,10 +905,10 @@ class fingering_chart {
 			}
 			pop()
 			update_seq_display = false
-			sequence_chart_buffer = better_get(seq_display.x0, seq_display.y0, seq_display.w, seq_display.h)
+			sequence_chart_buffer = better_get(~~seq_display.x0, ~~seq_display.y0, seq_display.w, seq_display.h)
 		}
 		else{
-			image(sequence_chart_buffer, seq_display.x0,seq_display.y0, seq_display.w, seq_display.h)
+			image(sequence_chart_buffer, ~~seq_display.x0, ~~seq_display.y0, seq_display.w, seq_display.h)
 			push()
 			const x = seq_display.x1 + playing_note_index * x_step
 			const f = this.notes_sequence[min(playing_note_index, this.notes_sequence.length - 1)]
@@ -889,8 +919,21 @@ class fingering_chart {
 			strokeCap(ROUND)
 			line(x, seq_display.y1, x, seq_display.y2)
 			pop()
-			fill(255,80,50,180)
+			push()
+			// blendMode(DIFFERENCE)
+			// fill(255)
+			// COL = [col1[0], col1[1] + 100, col1[2] + 80, 150]
+			let COL
+			if (f % scale_pattern.length == 0) {
+				COL = [100, 230, 0, 170]
+			}
+			else {
+				COL = [20, 180, 230, 170]
+			}
+			fill(COL)
+			// fill(255,80,50,180)
 			circle(x, y, diam)
+			pop()
 		}
 	}
 }
@@ -898,7 +941,7 @@ class fingering_chart {
 function duplicates_check(arr) {
 	let check_arr = []
 	for (var i = 0; i < arr.length; i++) {
-    check_arr[i] = arr[i][0];
+    check_arr[i] = arr[i][0]
 	}
 	// print(arr, check_arr)
 	// check_arr = arr.map((index) => arr[index].charAt[0]);
@@ -938,8 +981,8 @@ function contains(a, check_item, first=false) {
   	if(first) test_item = a[i][0]
 		if (test_item === check_item) {
 		// print(a[i] + ' ' + check_note)
-    return true;
+    return true
   	}
   }
-  return false;
+  return false
 }

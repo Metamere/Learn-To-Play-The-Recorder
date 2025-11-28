@@ -247,10 +247,46 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 	- made button and select fonts a bit bolder for readability on mobile, 
 	- adjusted sizes and positions of select, sliders, radios, etc.
 	- changed split holes to show a dividing line when open.
-	- corrected half hole cover position on second front hole on high note 
+	- corrected half hole cover position on second front hole on high note
+
+11-24-25
+	- fixed issues with drone
+	- fixed issues with mode shift
+	- scale sequence will restart where needed (scale, instrument, or sequence changes), 
+	and continue from current location when possible (condense notes change, mode, or key changes)
+	- added long press on drone button to turn it on and toggle the volume controls. (doesn't work with touch)
+	- changed scale up/down controls to allow for toggling between instrument up/down and key up/down modes
+	- sequences restart at the start instead of the second note when something changes it.
+	- changed sequence chart lines to scale down with diameter so that the dots 
+	don't become invisible on mobile on smaller grids (which is more of a problem on chromatic scale)
+	- set get and image functions up with integer values for arguments so now images are crisp 
+	instead of sometimes being blurred
+	- tempo range is now 10-600 instead of 20-400.
+	- added a 17th sequence, for trills
+	- changed timing for start note of sequence to speed it up on low tempos, and keep it consistent.
+	- changed highlighted note colors for better visibility
+	- made functions activated by buttons more efficient by adding arguments into the button function call,
+	so could combine many that had been split into duplicate functions with only difference being -1 vs. +1
+11-26-25
+	- added toggle for staff and note display
+	- added toggle for sequence display (long press to turn off, short press to turn on)
+	- set up effects dry_wet_ration to follow a quadratic curve to give finer control in the lower range,
+	and changed default from 0.25 to 0.2
+	- updated the save_chart function so that for the chromatic scale it only saves one fingering chart, 
+	doesn't save the scale pattern diagram, and positions the instrument and scale name properly.
+	- added an additional way to cycle through the scale modes by dragging along the length of the
+	 scale pattern representation. The drag area extends down into the first few rows of the info display.
+	- added a staccato range to stylo mode, in the upper portion of the note.
+11-28-25
+	- added direction override indicator onto play button
+	- changed from radio button to single button for sequence octaves_to_play control
+	- added a way to shift key by dragging left or right from the clef symbol when it is shown.
+	- added a dot indicator into the pattern representation 
 
 To-do:
+- add a practice mode where it cycles through keys, sequences, modes, etc. automatically
 -need to set up notation for all scales such that both flat and sharp notes can both be added where necessary
+And fix existing rules so that scales like Major Hexatonic V (mixolydian) key sigs display correctly
 -generate sheet music display for the scale patterns, even the shuffled ones.
 
 -Add ability to toggle alternate fingerings, for faster passages where proper pitch isn't as important as speed,

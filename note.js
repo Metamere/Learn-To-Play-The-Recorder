@@ -1,16 +1,16 @@
 
 // const col_amp = [-50,-40,-30]
 const color_arr1 = [
-	[0,88,67],  // C
-	[4,90,85],  // D
+	[0,88,67],    // C
+	[4,90,85],    // D
 	[10.5,89,92], // E
-	[20,95,50], // F
-	[35,90,65], // G
-	[41,90,75], // A
-	[57,90,77]] // B
+	[20,95,50],   // F
+	[35,90,65],   // G
+	[41,90,75],   // A
+	[57,90,77]]   // B
 
 const color_arr2 = [
-	[2,78,95], // C♯
+	[2,78,95],   // C♯
 	[7.5,90,98], // D♯
 	[30,90,78],  // F♯
 	[38,90,90],  // G♯
@@ -19,16 +19,16 @@ const color_arr2 = [
 class note {
 
 	constructor(x,y,w,h,note_color, frequency, index, scale_index, update_label, update_color, accidental_type){
-		this.w=w;
-		this.h=h;
-		this.x=x;
-		this.y=y;
+		this.w = w
+		this.h = h
+		this.x = x
+		this.y = y
 		
 		this.mid = x + w/2
-		this.isPressed = 0;
+		this.isPressed = 0
 		this.note_color = note_color
 		this.note_val = fingering_pattern[index]
-		this.frequency = frequency;
+		this.frequency = frequency
 		this.freq_bend_above = frequency * bend_factor - this.frequency
 		this.freq_bend_below = frequency / bend_factor - this.frequency
 		// console.log(this.freq_bend_below , this.freq_bend_above)
@@ -60,7 +60,7 @@ class note {
 		// textAlign(CENTER,TOP)
 		// textSize(U/2.9)
 		// should I include the frequency for each? Maybe just not on mobile?
-		// text(nf(this.frequency,1,4-str(int(this.frequency)).length ), this.mid, this.y+this.h*1.2); 
+		// text(nf(this.frequency,1,4-str(int(this.frequency)).length ), this.mid, this.y+this.h*1.2)
 		pop()
 		let pos = U*0.1
 		let sub_pos = U*0.25
@@ -182,18 +182,48 @@ class note {
 	}
 	
 	draw(){
+		
+		let weight_factor = 1
+		let COL = this.note_color
+		if (this.isPressed){
+			weight_factor = 3
+			COL = this.note_color.map(x => x * 0.65) //min(240,x + col_amp[this.note_val]))
+			if(!stylo_mode && this.note_val > 0){
+				COL[1] += 100
+				COL[2] += 80
+			}
+			if(display_staff)	this.generate_engraving()
+		}
+
+		if(!update_chart && this.redraw){
+			// draw dot at corresponding location on pattern representation
+			push()
+			noStroke()
+			const x_start = U * 1.65
+			const step_width = U * 0.92
+			const index_number = ((this.index + 12 - octave_start) % 12)
+			if(this.isPressed){
+				fill(COL)
+				circle(x_start + step_width * index_number, U * 1.4, step_width * 0.3)
+				if(index_number == 0){
+					circle(x_start + step_width * 12, U * 1.4, step_width * 0.3)
+				}
+			}	
+			else{ // clear old one
+				fill(255)
+				circle(x_start + step_width * index_number, U * 1.4, step_width * 0.35)
+				if(index_number == 0){
+					circle(x_start + step_width * 12, U * 1.4, step_width * 0.35)
+				}
+			} 
+			pop()
+		}
+
 		this.redraw = false
 		// ----------------------------------------------------------------------
 		
-		let COL = this.note_color
-		if (this.isPressed){
-			COL = this.note_color.map(x => x*0.7 ) //min(240,x + col_amp[this.note_val]))
-		// if (chart.display_staff) 
-			this.generate_engraving()
-		}
-		
 		let state
-		let shift_angle = 0.55 * PI
+		let shift_angle = 0.5 * PI
 		let note_fingering = recorder_fingerings[this.index]
 		// if(instrument_name == "Bass" && this.index == 8){
 		// 	note_fingering = bass_alt_fingering
@@ -202,14 +232,14 @@ class note {
 		fill(COL)
 		let m1 = U * 0.065
 		let m2 = U * 0.028
-		if (note_count == 12 && hide_fingering == false){
+		if (note_count == 12 && !hide_fingering){
 			let inc = 0.09 * this.isPressed
 			push()
 			fill(255)
-			rect(this.x + m2, this.y + m1, this.w - m2*2, this.h - m1) // clear old shapes out to make it look better
+			rect(this.x + m2, this.y + m1, this.w - m2 * 2, this.h - m1) // clear old shapes out to make it look better
 			stroke(COL)
-			strokeWeight(this.wt)
-			strokeCap(SQUARE);
+			strokeWeight(this.wt * weight_factor)
+			strokeCap(SQUARE)
 			let m = U * 0.1
 			line(this.x + m, this.y + this.h * 0.125, this.x + this.w - m, this.y + this.h * 0.125)
 			line(this.x + m, this.y + this.h * 0.5, this.x + this.w - m, this.y + this.h * 0.5)
@@ -244,14 +274,22 @@ class note {
 			}
 		}
 		else{ // just a colored box instead of the fingering pattern
-
-			push()
-			fill(255)
-			rect(this.x + m2, this.y + m1, this.w - m2*2, this.h - m1) // clear old shapes out to make it look better
-			pop()
-			if(this.note_val > 0) rect(this.x + m1, this.y + this.h * 0.008, this.w - m1 * 2, this.h - m1) 
-			else rect(this.x + m1, this.y + m1, this.w - m1 * 2, this.h * 0.495)
-			if(stylo_mode && note_span){ // draw interval indicators -----------------------------------------------------------
+			if(!stylo_mode){
+				push()
+				fill(255)
+				rect(this.x + m2, this.y + m1, this.w - m2*2, this.h - m1) // clear old shapes out to make it look better
+				pop()
+				if(this.note_val > 0) rect(this.x + m1, this.y + this.h * 0.008, this.w - m1 * 2, this.h - m1) 
+				else rect(this.x + m1, this.y + m1, this.w - m1 * 2, this.h * 0.495)
+			}
+			else if(stylo_mode && note_span){ // draw interval indicators -----------------------------------------------------------
+				if(this.isPressed){
+					rect(this.x + m1, this.y + m1, this.w - m1 * 2, 2 * U)
+					rect(this.x + m1, this.y + m1 + 2.1 * U, this.w - m1 * 2, this.h * 0.99 - 2.1 * U)
+				}
+				else{
+					rect(this.x + m1, this.y + m1, this.w - m1 * 2, this.h * 0.99)
+				}
 				fill(0)
 				const L = U * 0.06
 				let v_spacing = (this.h - L)/note_span
@@ -287,25 +325,29 @@ class note {
 	}
 	
 	contains(x,y){
-		var dx = x-this.x;
-		var dy = y-this.y;
-		return (0<=dx && dx<=this.w && 0<=dy && dy<=this.h);
+		var dx = x-this.x
+		var dy = y-this.y
+		return (0<=dx && dx<=this.w && 0<=dy && dy<=this.h)
 	}
 	contains_above(x,y){
-		var dx = x-this.x;
-		var dy = y-chart_above;
-		return (0<=dx && dx<=this.w && 0<=dy && dy<=this.y);
+		var dx = x-this.x
+		var dy = y-chart_above
+		return (0<=dx && dx<=this.w && 0<=dy && dy<=this.y)
 	}
 	
-	mousePressed(duration=0){
-		this.isPressed = 1;
+	mousePressed(duration = 0, staccato = false){
+		this.isPressed = 1
 		this.redraw = true
 		redraw_notes = true
-		play_oscillator(this.frequency,duration);
-		// makeNoise()
+		if(staccato){
+			osc.setADSR(0.1,0.1,1,0.1)
+			play_oscillator(this.frequency, constrain(map(mouseY/U, 8, 10, 0.01, 0.25), 0.01,0.25))
+			osc.setADSR(0.2,0.2,0.75,0.1)
+		} 
+		else play_oscillator(this.frequency, duration)
 	}
 	mouseReleased(){
-		this.isPressed = 0;
+		this.isPressed = 0
 		redraw_notes = true
 		this.redraw = true
 	}
@@ -315,13 +357,13 @@ class note {
 		// 𝄞 𝄢 ♯♭♮ 𝄚 ♪ 𝅘𝅥𝅮𝅘𝅥𝅗𝅥𝅝
 		// can move this set of calcs to outer, chart creation level
 		let x0 = U * 13.9
+		let y0 = U * 6.3 // lowest part on screen
+		let M = U * 0.15
 		let xm = x0 + U
 		let w = U * 1.55
 		let h = U * 5.25
 		let S = U * 0.4
 		let x1 = x0 + w
-		let M = U * 0.15
-		let y0 = U * 6.3 // lowest part on screen
 		let y3 = y0 - h
 		let y1 = y0 - M
 		// let y2 = y3 + M

@@ -351,24 +351,24 @@ const scales_arr = [
 								'V · Mixolydian',// major
 								'VI · Aeolian',  // minor
 								'VII · Locrian'],// minor
-	 alt: [['Diatonic scale',
-					'Ionian mode', 
-					'Cheerful, upbeat, light'], // I
+	 alt: [['Ionian mode of',
+					'the diatonic scale.', 
+					'Cheerful, upbeat, light.'], // I
 				 ['Solemn, profound,',
-					'mysterious',
+					'mysterious.',
 					'Raga Bageshri' ], // II
-				 ['Intense, ominous',
+				 ['Intense, ominous.',
 					'Raga Asavari',
 				  'Flamenco, Zokuso'], // III
-				 ['Contemplative, warm',
+				 ['Contemplative, warm.',
 					'Raga Shuddh Kalyan', 
 					'Kung, Ping, Gu'], // IV
-				 ['Satisfied, hopeful',
+				 ['Satisfied, hopeful.',
 					'Raga Harini'], // V
-				 ['Pensive, sad, dark, heavy',
-					'Raga Jaunpuri', 
-					'Melodic Minor Descending'], // VI
-				 ['Cold, spooky, conflicted',
+				 ['Pensive, sad, dark, heavy.',
+					'Raga Jaunpuri, minor scale', 
+					'Melodic minor descending'], // VI
+				 ['Cold, spooky, conflicted.',
 					'Yishtabach',
 					'Thang Klang, Thang luk']] // VII
 	},
@@ -381,8 +381,8 @@ const scales_arr = [
 								'V · Phrygian',
 								'VI · Lydian',
 								'VII · Mixolydian'],
-	 alt: [['Diatonic scale',
-					'Aeolian mode'],
+	 alt: [['Aeolian mode of',
+					'the diatonic scale'], 
 				 ['Yishtabach',
 					'Thang Klang, Thang luk'],
 				 ['Ionian mode, Major',
@@ -483,11 +483,11 @@ const scales_arr = [
 							'VII · Chrom. Hypophrygian Inv.'],	 
 	 alt: [['Persian scale'],
 				 [''],
+				 ['Chromatic Phrygian Inverse'],
 				 [''],
-				 [''],
-				 [''],
-				 [''],
-				 ['']]
+				 ['Chromatic Mixolydian', 'Inverse'],
+				 ['Chromatic Hypodorian', 'Inverse'],
+				 ['Chromatic Hypophrygian', 'Inverse']]
 	}, 
   {name: 'Double Harmonic Major', 
 	 pattern: [1,3,1,2,1,3,1],
