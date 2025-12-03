@@ -280,15 +280,37 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 11-28-25
 	- added direction override indicator onto play button
 	- changed from radio button to single button for sequence octaves_to_play control
-	- added a way to shift key by dragging left or right from the clef symbol when it is shown.
-	- added a dot indicator into the pattern representation 
+	- added a way to shift key by dragging left or right from the staff area when it is shown.
+	- added a dot indicator into the pattern representation
+	- can change sequence and octaves_to_play by dragging within the sequence display area.
+	- toggle staff display on click and release in that area, assuming no drag to change the key
+
+11-30-25
+	- swapped lydian hexatonic into 1st mode instead of major hexatonic, 
+	so that keys of C and F would have no flats or sharps
+	- got rid of key select dropdown, as it was now fairly redundant, didn't hold any useful information, 
+	and always displayed the base scale key in the modes which was confusing and unhelpful 
+	(and because that aspect would have been 100x harder to fix than just removing it, lol).
+	- added sequence controls gesture controls for when sequence is playing or paused.
+	Drag left or right to set direction override, up or down to toggle repeat.
+12-2-25
+	- for condensed scale, now always has the correct key changes for selected note, even when there is a mode shift.
+	Also, it now allows for parallel mode changes while condensed, by using the mode shuffle button or the mode change
+	arrows in the misc menu. Dragging the pattern representation works, but dragging in the note names area just does
+	a relative mode change, as the parallel mode change there with dragging is inherently screwy due to how things jump around. 
+	Those were some longstanding to-do items, whew. I solved it by creating a second notes array to store all the notes
+	so they can still be accessed when it is in the condensed state. 
+	I probably should have structured things that way from the start, 
+	and just made the displayed notes into a subset of the full notes array.
 
 To-do:
+- allow for toggling between sharps/flats/both for scales where the counts are the same,
+or where there are duplicate letters.
+- add a note length selection? whole, half, quarter, eigth, sixteenth? Then won't need so big of a tempo range?
+- allow indicator dot in pattern representation to be turned off, and store that preference?
 - add a practice mode where it cycles through keys, sequences, modes, etc. automatically
--need to set up notation for all scales such that both flat and sharp notes can both be added where necessary
+- need to set up notation for all scales such that both flat and sharp notes can both be added where necessary
 And fix existing rules so that scales like Major Hexatonic V (mixolydian) key sigs display correctly
--generate sheet music display for the scale patterns, even the shuffled ones.
-
--Add ability to toggle alternate fingerings, for faster passages where proper pitch isn't as important as speed,
-or for individual instrument nuances or oddities (e.g. bass recorder often has some differences in fingering) 
--On mobile, could the phone's microphone act as a tuner? The capabilities should be there.
+- generate sheet music display for the scale patterns, even the shuffled ones.
+- Add ability to toggle alternate fingerings, for faster passages where proper pitch isn't as important as speed,
+or for individual instrument nuances or oddities (e.g. bass recorder often has some differences in fingering)

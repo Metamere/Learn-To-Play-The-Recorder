@@ -1,4 +1,4 @@
-const instruments_arr = [
+const recorder_instruments_arr = [
 	{name: "Sub-contrabass", lowest: -40, key: 'F1'}, // or double contrabass or octocontrabass
 	{name: "Sub-great bass", lowest: -33, key: 'C2'}, // or Contra great bass
 	{name: "Contrabass", lowest: -28, key: 'F2'}, // or Sub-bass
@@ -10,6 +10,14 @@ const instruments_arr = [
 	{name: "Sopranino", lowest: 8, key: 'F5'},
 	{name: "Sopranissimo", lowest: 15, key: 'C6'} // or Garklein (German for "quite small") or Piccolo
 ]
+
+const brass_instruments_arr = [
+	// {name: "Tuba", lowest: -40, key: 'F1'}, //
+	// {name: "Euphonium", lowest: -33, key: 'C2'}, //
+	// {name: "B♭ Trumpet", lowest: -28, key: 'B♭4'}, //
+	{name: "C Trumpet", lowest: -9, key: 'C4'}, //
+]
+
 
 const recorder_fingerings = [
 [1,1,1,1,1,1,1,1], // C,      F
@@ -47,6 +55,48 @@ const recorder_fingerings = [
 [2,0,1,1,0,1,1,0]  // D♯ E♭,  G♯ A♭ // need to exclude for bass instruments
 ]
 
+const trumpet_fingerings = [
+// [1,1,1], // F♯ G♭ - extend 3rd valve slide
+// [1,0,1], // G - extend 3rd valve slide
+// [0,1,1], // G♯ A♭
+[1,1,0], // A
+[1,0,0], // A♯ B♭
+[0,1,0], // B
+[0,0,0], // C
+[1,1,1], // C♯ D♭ - extend 3rd valve slide
+[1,0,1], // D - extend 3rd valve slide
+[0,1,1], // D♯ E♭
+[1,1,0], // E
+[1,0,0], // F
+
+[0,1,0], // F♯ G♭
+[0,0,0], // G
+[0,1,1], // G♯ A♭
+[1,1,0], // A
+[1,0,0], // A♯ B♭
+[0,1,0], // B
+[0,0,0], // C
+[1,1,0], // C♯ D♭
+[1,0,0], // D
+[0,1,0], // D♯ E♭
+[0,0,0], // E
+[1,0,0], // F
+[0,1,0], // F♯ G♭
+
+// same as previous octave
+[0,0,0], // G
+[0,1,1], // G♯ A♭
+[1,1,0], // A
+[1,0,0], // A♯ B♭
+[0,1,0], // B
+[0,0,0], // C
+// [1,1,0], // C♯ D♭
+// [1,0,0], // D
+// [0,1,0], // D♯ E♭
+// [0,0,0], // E
+]
+
+
 const bass_alt_fingering = [1,1,1,0,1,1,0,0]
 
 const notes_arr_C = [
@@ -71,8 +121,18 @@ function C_to_F(array_C){
 const notes_arr_F = C_to_F(notes_arr_C)
 
 const major_key_signatures_C = [
-	["C",0],    ["D♭",5], ["D",2], ["E♭",3], ["E",4],  ["F",1],
-	["F♯/G♭",6], ["G",1], ["A♭",4], ["A",3], ["B♭",2], ["B",5]
+	["C",0],     // C • D • E • F • G • A • B
+	["D♭",5],    // D♭• E♭• F • G♭• A♭• B♭• C
+	["D",2],     // D • E • F♯• G • A • B • C♯
+	["E♭",3], 	 // E♭• F • G • A♭• B♭• C • D
+	["E",4],     // E • F♯• G♯• A • B • C♯• D♯
+	["F",1],     //	F • G • A • B♭ • C • D • E
+	["F♯/G♭",6], // F♯• G♯• A♯• B • C♯• D♯• E♯ 
+	["G",1],     // G • A • B • C • D • E • F♯
+	["A♭",4],    // A♭• B♭• C • D♭• E♭• F • G
+	["A",3],     // A • B • C♯• D • E • F♯• G♯
+	["B♭",2],    // B♭ • C • D • E♭ • F • G • A
+	["B",5]      // B • C♯• D♯• E • F♯• G♯• A♯
 ]
 
 // const major_accidental_counts_list_C = [0, 5, 2, 3, 4, 1,
@@ -138,16 +198,16 @@ const scales_arr = [
   {name: 'Balinese Pelog', 
 	 pattern: [1,2,4,1,4],
 	 mode_names: ['I · Phrygian Pentatonic', 
-								'II · Raga Vaijayanti',
-								'III · Raga Khamaji Durga', 
+								'II · Rāga Vaijayanti',
+								'III · Rāga Khamaji Durga', 
 								'IV · African Pentatonic 4',
-								'V · Ionian Pentatonic'],
+								'V · Ryukyu'],
 	 alt: [['Subset of Phrygian mode',
 					'Pelog = beautiful'],
 				 [''],
 				 [''],
 				 [''],
-				 ['']]
+				 ['Rāga Gambhiranata'],['Ionian Pentatonic']]
 	},
   {name: 'Hon-kumoi-joshi', 
 	 pattern: [1,4,2,1,4],
@@ -155,11 +215,11 @@ const scales_arr = [
 		 						'II · Lydian Pentatonic',
 								'III · Aeolian Pentatonic',
 								'IV · Iwato', 
-								'V · Raga Bhinna Shadja'],
+								'V · Rāga Bhinna Shadja'],
 	 alt: [['Sakura scale',
-				 'Raga Salanganata'],
+				 'Rāga Salanganata'],
 				 ['Hirajoshi',
-					'Raga Amritavarshini'],
+					'Rāga Amritavarshini'],
 				 ['Yona Nuki minor'],
 				 [''],
 				 ['']]
@@ -167,7 +227,7 @@ const scales_arr = [
 	{name: 'Kokin-joshi', 
 	 pattern: [1,4,2,3,2],
 	 mode_names: ['I · Kokin-joshi', 
-								'II · Raga Hindol',
+								'II · Rāga Hindol',
 								'III · Han-kumoi', 
 								'IV · Locrian Pentatonic',
 								'V · Dorian Pentatonic'],
@@ -175,20 +235,20 @@ const scales_arr = [
 					'Miyakobushi',
 				 'In Sen, Han-Iwato'],
 				 [''],
-				 ['Raga Shobhavari'], 
-				 ['Raga Jayakauns'],
+				 ['Rāga Shobhavari'], 
+				 ['Rāga Jayakauns'],
 				 ['Kumoi',
-					'Raga Shivranjani']]
+					'Rāga Shivranjani']]
 	},
 	{name: 'Mixolydian Pentatonic', 
 	 pattern: [4,1,2,3,2],
 	 mode_names: ['I · Mixolydian Pentatonic', 
-								'II · Raga Chhaya Todi',
-								'III · Raga Desh', 
-								'IV · Raga Chandrakauns',
-								'V · Raga Shree Kalyan'],
+								'II · Rāga Chhaya Todi',
+								'III · Rāga Desh', 
+								'IV · Rāga Chandrakauns',
+								'V · Rāga Shree Kalyan'],
 	 alt: [['Subset of Mixolydian mode',
-					'Raga Savethri'],
+					'Rāga Savethri'],
 				 [''],
 				 [''], 
 				 [''],
@@ -198,7 +258,7 @@ const scales_arr = [
 	 pattern: [2,2,3,3,2],
 	 mode_names: ['I · Dominant Pentatonic',
 								'II · Staditonic',
-								'III · Raga Harikauns',
+								'III · Rāga Harikauns',
 								'IV · Sylitonic',
 								'V · Thonitonic'],
 	 alt: [['Phropitonic'],
@@ -214,16 +274,18 @@ const scales_arr = [
 								'III · Man Gong',
 								'IV · Scottish Pentatonic',
 								'V · minor pentatonic'],
-	 alt: [['Ryosen, Man Jue,',
-				 'Raga Bhopali'],
+	 alt: [
+				 ['Ryosen, Gong, Tizita Major',
+				 'Rāga Deshkar, Rāga Kokila',
+				 'Rāga Mohanam'],
 				 ['Qing Yu', 
 					'Rāga Madhyamavati'],
 				 ['Quan Ming, Jiao, Yi Ze', 
 					'Rāga Hindola'],
 				 ['Ritusen, Zheng', 
 					'Rāga Devakriya'],
-				['Min\'yo scale', 
-					'Rāga Dhani']
+				 ["Min'yo scale, Gu Xian", 
+					'Rāga Dhani, Rāga Abheri'],
 				]
 	},
   {name: 'minor pentatonic', 
@@ -233,27 +295,36 @@ const scales_arr = [
 								'III · Suspended Pentatonic',
 								'IV · Man Gong',
 								'V · Scottish Pentatonic'],
-	 alt: [['Min\'yo scale', 
-					'Rāga Dhani'],
-				 ['Ryosen, Man Jue,',
-				 'Raga Bhopali'],
+	 alt: [
+				 ["Min'yo scale, Gu Xian", 
+					'Rāga Dhani, Rāga Abheri'],
+				 ['Ryosen, Gong, Tizita Major',
+				 'Rāga Deshkar, Rāga Kokila',
+				 'Rāga Mohanam'],
 				 ['Qing Yu', 
 					'Rāga Madhyamavati'],
 				 ['Quan Ming, Jiao, Yi Ze', 
 					'Rāga Hindola'],
 				 ['Ritusen, Zheng', 
-					'Rāga Devakriya']]
+					'Rāga Devakriya']
+				]
 	},
-	// 4,1,2,3,2 = Hindu, Indian, or Mixolydian Pentatonic
   {name: 'Blues', 
 	 pattern: [3,2,1,1,3,2],
-	 alt: [['Hexatonic Blues,', 
-					'minor Pentatonic +1',
-				  'Raga Nileshwari'],
-				 ['Gycrimic'],
-				 ['Pyrimic'],
-				 ['Raga Hamsanandi','Lydimic'],
-				 ['Mixolimic'],
+	 mode_names: ['I · Blues Hexatonic',
+		 						'II · Blues Major',
+								'III · Rāga Marva', 
+								'IV · Rāga Hamsanandi',
+								'V · Rāga Tulsikauns',
+								'VI · Dadimic'],
+	 alt: [['Blues Hexatonic,', 
+					'minor pentatonic + 1',
+				  'Rāga Nileshwari'],
+				 ['Blues Major, Gycrimic', 
+					'Rāga Lagan Gandhar'],
+				 ['Rāga Marva', 'Rāga Pancama'],
+				 ['Rāga Hamsanandi','Lydimic'],
+				 ['Rāga Tulsikauns', 'Mixolimic'],
 				 ['Dadimic']]
 	},
   {name: 'Augmented', 
@@ -261,7 +332,7 @@ const scales_arr = [
 	mode_names: ['I · Augmented Hexatonic',
 		 					 'II · Augmented Inverse'],
 	 alt: [['minor third / half step scale',
-				  'Raga Devamani'],
+				  'Rāga Devamani'],
 				 ['Six Tone Symmetrical']]
 	},
   {name: 'Tritone', 
@@ -269,9 +340,9 @@ const scales_arr = [
 	 mode_names: ['I · Stylimic',
 		 						'II · Aeradimic',
 								'III · Zyrimic'],
-	 alt: [['Raga Indupriya','Stylimic'],
+	 alt: [['Rāga Indupriya'],
 				 ['Messiaen Mode 2,', 'Truncation 1'],
-				 ['Raga Neelangi']]
+				 ['Rāga Neelangi']]
 	},
   {name: '2S Tritone', 
 	 pattern: [1,1,4,1,1,4],
@@ -289,17 +360,24 @@ const scales_arr = [
 	},
   {name: 'Prometheus', 
 	 pattern: [2,2,2,3,1,2],
+		mode_names: ['I · Prometheus',
+							'II · Bythimic',
+							'III · Padimic', 
+							'IV · Boptimic',
+							'V · Stogimic',
+							'VI · Inuit Hexatonic II'],
 	 alt: [['The whole tone scale with',
 				'one degree altered.',
-				'Alexander Scriabin\'s',
-				'\"mystic chord\"']]
+				"Alexander Scriabin's",
+				'\"mystic chord\"'],
+				[''],[''],[''],[''],['']]
 	},
-	{name: 'Raga Sarasvati', 
+	{name: 'Rāga Sarasvati', 
 	 pattern: [2,4,1,2,1,2],
-	 mode_names: ['I · Raga Sarasvati',
-		 						'II · Raga Kamalamanohari',
+	 mode_names: ['I · Rāga Sarasvati',
+		 						'II · Rāga Kamalamanohari',
 								'III · Barimic', 
-								'IV · Raga Sindhura Kafi',
+								'IV · Rāga Sindhura Kafi',
 								'V · Sagimic',
 								'VI · Aelothimic'],
 	 alt: [['Socrimic'],
@@ -309,13 +387,13 @@ const scales_arr = [
 				 [''],
 				 ['']]
 	},	
-	{name: 'Raga Suddha Bangala', 
+	{name: 'Rāga Suddha Bangala', 
 	 pattern: [2,1,2,2,2,3],
-	 mode_names: ['I · Raga Suddha Bangala',
-		 						'II · Raga Gandharavam ',
-								'III · Raga Mruganandana', 
+	 mode_names: ['I · Rāga Suddha Bangala',
+		 						'II · Rāga Gandharavam ',
+								'III · Rāga Mruganandana', 
 								'IV · Zeracrimic',
-								'V · Raga Navamanohari',
+								'V · Rāga Navamanohari',
 								'VI · Phracrimic'],
 	 alt: [['Gauri Velavali','Aerathimic'],
 				 ['Sabai Silt', 'Sarimic'],
@@ -324,23 +402,24 @@ const scales_arr = [
 				 ['Khmer Hexatonic 3', 'Byptimic'],
 				 ['']]
 	},
-	{name: 'Major Hexatonic', 
-	 pattern: [2,2,1,2,2,3],
-	 mode_names: ['I · Major Hexatonic',
-		 						'II · minor hexatonic',
-								'III · Ritsu Onkai', 
-								'IV · Lydian Hexatonic',
-								'V · Mixolydian Hexatonic',
-								'VI · Phrygian Hexatonic'],
-	 alt: [['Diatonic Hexachord',
-					'Raga Kambhoji',
+	{name: 'Lydian Hexatonic', 
+	 pattern: [2,2,3,2,2,1],
+	 mode_names: ['I · Lydian Hexatonic',
+								'II · Mixolydian Hexatonic',
+								'III · Phrygian Hexatonic',
+								'IV · Major Hexatonic',
+		 						'V · minor hexatonic',
+								'VI · Ritsu Onkai', 
+],
+	 alt: [['Rāga Kumud'],
+				 ['Rāga Darbar'],
+				 ['Rāga Gopikavasantam'],
+				 ['Diatonic Hexachord',
+					'Rāga Kambhoji',
 					'Scottish Hexatonic'],
-				 ['Raga Manirangu', 
+				 ['Rāga Manirangu', 
 					'Palasi'],
-		 		 ['Raga Suddha Todi'],
-				 ['Raga Kumud'],
-				 ['Raga Darbar'],
-				 ['Raga Gopikavasantam']]
+		 		 ['Rāga Suddha Todi']]
 	},
   {name: 'Major', 
 	 pattern: [2,2,1,2,2,2,1],
@@ -351,23 +430,23 @@ const scales_arr = [
 								'V · Mixolydian',// major
 								'VI · Aeolian',  // minor
 								'VII · Locrian'],// minor
-	 alt: [['Ionian mode of',
-					'the diatonic scale.', 
-					'Cheerful, upbeat, light.'], // I
+	 alt: [['Cheerful, upbeat, light.',
+			   'Ionian, Maqam Cargah',
+			   'Ararai, Peruvian Major'], // I
 				 ['Solemn, profound,',
 					'mysterious.',
-					'Raga Bageshri' ], // II
+					'Rāga Bageshri' ], // II
 				 ['Intense, ominous.',
-					'Raga Asavari',
+					'Rāga Asavari',
 				  'Flamenco, Zokuso'], // III
 				 ['Contemplative, warm.',
-					'Raga Shuddh Kalyan', 
+					'Rāga Shuddh Kalyan', 
 					'Kung, Ping, Gu'], // IV
 				 ['Satisfied, hopeful.',
-					'Raga Harini'], // V
+					'Rāga Harini'], // V
 				 ['Pensive, sad, dark, heavy.',
-					'Raga Jaunpuri, minor scale', 
-					'Melodic minor descending'], // VI
+					'natural minor, Cushak,',
+					'Rāga Adana, Ezel, Se'], // VI
 				 ['Cold, spooky, conflicted.',
 					'Yishtabach',
 					'Thang Klang, Thang luk']] // VII
@@ -386,12 +465,12 @@ const scales_arr = [
 				 ['Yishtabach',
 					'Thang Klang, Thang luk'],
 				 ['Ionian mode, Major',
-					'Raga Atana, Zè'],
-				 ['Raga Bageshri'],
-				 ['Raga Asavari','Zokuso'],
-				 ['Raga Shuddh Kalyan', 
+					'Rāga Atana, Zè'],
+				 ['Rāga Bageshri'],
+				 ['Rāga Asavari','Zokuso'],
+				 ['Rāga Shuddh Kalyan', 
 					'Kung, Ping, Gu'],
-				 ['Raga Harini']]
+				 ['Rāga Harini']]
 	},
 	{name: 'Jazz minor', 
 	 pattern: [2,1,2,2,2,2,1],
@@ -403,32 +482,23 @@ const scales_arr = [
 								'VI · minor locrian',
 								'VII · Superlocrian'],
 	 alt: [['The melodic minor scale',
-				 'In classical use, often',  // Raga Patdip, Minor-Major
+				 'In classical use, often',  // Rāga Patdip, Minor-Major
 				 'descends as natural minor.'], // Melodic Minor Ascending
 				 ['Phrygian ♯6',
 					'Jazz minor inverse', 
-					'Raga Natabharanam'],
+					'Rāga Natabharanam'],
 				 ['Lydian Augmented'],
 				 ['Lydian Dominant',
 					'Overtone Scale',
-				  'Raga Bhusavati'],
+				  'Rāga Bhusavati'],
 				 ['Mixolydian ♭6',
 				 'Melodic Major, Hindu',
-				 'Raga Charukeshi'],
+				 'Rāga Charukeshi'],
 				 ['Half Diminished', 
 					'Locrian ♯2'],
 				 ['Altered Scale,',
 					'Diminished Whole-tone']]
 	},
-		// {name: 'Neapolitan Major', // Should I include these two Neapolitan scales? Not sure. Similar, and not great.
-		// pattern: [1,2,2,2,2,2,1],
-		// alt:[['']]},
-		// {name: 'Neapolitan minor', 
-		// pattern: [1,2,2,2,1,3,1],
-		//  alt:[['']]},		
-	// {name: 'Harmonic Major',
-		// pattern: [2,2,1,2,1,3,1],
-		//  alt:[['Raga Haripriya, Ethiopian', 'Tabahaniotikos, Mela Sarasangi']]},
   {name: 'harmonic minor', 
 	 pattern: [2,1,2,2,1,3,1],
 	 mode_names: ['I · harmonic minor',
@@ -438,18 +508,18 @@ const scales_arr = [
 								'V · Phrygian Dominant',
 								'VI · Aeolian Harmonic',
 								'VII · Ultralocrian'],
-	 alt: [['Raga Kiranavali'],
+	 alt: [['Rāga Kiranavali'],
 				 ['Thyptian'], // II
 				 ['Ionian ♯5', 'Phrothian'], // III
 				 ['Ukrainian Dorian', 
-					'Raga Desisimharavam', 
+					'Rāga Desisimharavam', 
 					'Misheberekh'], // IV
 				 ['Dorian Flamenco, Persian', 
 					'Dominant ♭2 ♭6 (jazz)',
-					'Raga Jogiya, Spanish Romani', 
+					'Rāga Jogiya, Spanish Romani', 
 					'Freygish, Ahava Rabboh'], // V
 				 ['Lydian ♯2', 
-					'Raga Kusumakaram'], // VI
+					'Rāga Kusumakaram'], // VI
 				 ['Superlocrian Diminished', 
 					'Superlocrian 𝄫']] // VII
 	},  
@@ -461,9 +531,8 @@ const scales_arr = [
 								'IV · Altered Dominant ♮6',
 								'V · jazz minor ♯5',
 								'VI · Ukrainian Dorian ♭2',
-								'VII · Nohkan flute scale'
-							 ],
-	 alt: [['Raga Nasamani', 
+								'VII · Nohkan flute scale'],
+	 alt: [['Rāga Nasamani', 
 					'Mela Nasikabhusani'],
 				 ['Ultralocrian 𝄫6'],
 				 ['Locrian ♮2 and ♮7'],
@@ -472,9 +541,9 @@ const scales_arr = [
 				 ['Mela Sadvidhamargini'],
 				 ['Lydian Augmented ♯3']]
 	},
-  {name: 'Raga Lalita', // slight variation of Double Harmonic Major or Byzantine scale
+  {name: 'Rāga Lalita', // slight variation of Double Harmonic Major or Byzantine scale
 	 pattern: [1,3,1,1,2,3,1],
-	 mode_names: ['I · Raga Lalita', 
+	 mode_names: ['I · Rāga Lalita', 
 							'II · Mela Calanata',
 							'III · Chrom. Phrygian Inv.',
 							'IV · Todi That',
@@ -499,16 +568,16 @@ const scales_arr = [
 								'VI · Ionian Augmented ♯2',
 								'VII · Locrian 𝄫3 𝄫7'
 							 ],
-	 alt: [['Byzantine, Raga Paraj,', 
+	 alt: [['Byzantine, Rāga Paraj,', 
 				 'Mela Mayamalavagaula' ,
 				 'Hungarian Romani Major'],
-				 ['Raga Rasamanjari'],
+				 ['Rāga Rasamanjari'],
 				 ['Ionodian'],
 		 		 ['Flamenco mode', 
 		  	  'Hungarian/Gypsy minor', 
 			    'Egyptian Heptatonic',
-				  'Raga Madhava Manohari'],
-				 ['Raga Ahira-Lalita',
+				  'Rāga Madhava Manohari'],
+				 ['Rāga Ahira-Lalita',
 					'"Oriental"',],
 				 ['Hungarian Romani minor 3rd',
 					'Docrian'],
@@ -526,15 +595,15 @@ const scales_arr = [
 	 alt: [['Flamenco mode', 
 				 'Hungarian/Gypsy minor', 
 				 'Egyptian Heptatonic',
-				 'Raga Madhava Manohari'],
-				 ['Raga Ahira-Lalita',
+				 'Rāga Madhava Manohari'],
+				 ['Rāga Ahira-Lalita',
 					'"Oriental"',],
 				 ['Docrian'],
 				 ['Epadian'],
-				 ['Byzantine, Raga Paraj,', 
+				 ['Byzantine, Rāga Paraj,', 
 				 'Mela Mayamalavagaula' ,
 				 'Hungarian Romani Major'],
-				 ['Raga Rasamanjari'],
+				 ['Rāga Rasamanjari'],
 				 ['Ionodian']]
 	},
   {name: 'Enigmatic', 
@@ -546,7 +615,7 @@ const scales_arr = [
 							'V · Madian',
 							'VI · Aerygian',
 							'VII · Mela Manavati'],
-	 alt: [['Verdi\'s Scala Enigmatica'],				
+	 alt: [["Verdi's Scala Enigmatica"],				
 				[''],
 				[''],
 				[''],
@@ -578,33 +647,22 @@ const scales_arr = [
   {name: 'Bebop Dominant', 
 	 pattern: [2,2,1,2,2,1,1,1],
 	 alt: [['Major/Mixolydian Mixed',
-					'Raga Khamaj',
+					'Rāga Khamaj',
 					'Chinese Eight-Tone'],
-				 ['Raga Mukhari',
+				 ['Rāga Mukhari',
 					'Dorian/Aeolian Mixed'],
 				 ['Phrygian/Locrian Mixed'],
 				 ['Ichikotsuchô',
-					'Raga Yaman Kalyan',
+					'Rāga Yaman Kalyan',
 					'Major/Lydian Mixed'],
 				 ['Minor Bebop',
 					'Dorian Bebop',
-					'Raga Zilla'],
+					'Rāga Zilla'],
 				 ['Quartal Octamode',
 					'Phrygian/Aeolian Mixed'],
 				 ['Godyllic', 'minor'],
 				 ['Prokofiev', 'minor']]
 	},
-	// {name: 'bebop minor', 
-	//  pattern: [2,1,1,1,2,2,1,2],
-	//  alt: [['Dorian Bebop','Raga Zilla','Mixodyllic'],
-	// 			 ['Quartal Octamode'],
-	// 			 ['Godyllic'],
-	// 			 ['Prokofiev'],
-	// 			 ['Dominant Bebop'],
-	// 			 ['Raga Mukhari'],
-	// 			 ['Phrygian/Locrian'],
-	// 			 ['Ichikotsuchô','Raga Yaman Kalyan']]
-	// },
   {name: 'Bebop melodic minor', 
 	 pattern: [2,1,2,2,1,1,2,1],
 	 mode_names: ['I · Ionacryllic', 
@@ -626,21 +684,14 @@ const scales_arr = [
 				 [''],
 				 ['']]
 	},
-	// {name: 'bebop harmonic minor', 
-	//  pattern: [2,1,2,2,1,2,1,1],
-	//  alt: [['Merges the notes from',
-	// 			 'the relative natural minor',
-	// 			 'and harmonic minor scales.']]
-	// },
   {name: '7th ♭5 diminished', 
 	 pattern: [2,2,1,1, 2,2,1,1],
+		mode_names: ['I · Messiaen Mode 6', 
+							'II · Epotyllic',
+							'III · Epidyllic',
+							'IV · Van der Horst Octatonic'],
 	 alt: [['Derived from the', 
-					'Whole Tone scale.', 
-					'Messiaen Mode 6'],
-				 [''],
-				 [''],
-				 [''],
-				 [''],
+					'Whole Tone scale.'],
 				 [''],
 				 [''],
 				 ['']]
@@ -671,7 +722,7 @@ scale_types_arr = ['Pentatonic', 'Hexatonic', 'Heptatonic', 'Octatonic'] //, 'no
 scale_pattern_7 = [1,1,2,2,1]
 																		 
 const mode_numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
-var modes_arr = [...mode_numerals]
+let modes_arr = [...mode_numerals]
 
 // The three major modes are: Ionian, Lydian and Mixolydian (dominant 7)
 // the four minor modes are: Dorian, Phrygian, Aeolian and Locrian.
@@ -691,8 +742,8 @@ var modes_arr = [...mode_numerals]
 7,  Perfect fifth, P5
 8,  minor sixth, m6
 9,  Major sixth, M6
-10,	minor seventh, m7
-11,	Major seventh, M7
+10, minor seventh, m7
+11, Major seventh, M7
 12, Perfect octave, P8
 
 The commonly held consonant intervals in musical composition are as follows:

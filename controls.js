@@ -1,34 +1,33 @@
-var control_y, inst_x, scale_x, key_x, mode_x, tune_x
-var tuning_slider_shown = false
-var tempo_slider_shown = false
-var drone_vol_slider_shown = false
-var vol_slider_shown = false
-var sequence_slider_shown = false
-var initial_tuning
-var sequence_shuffled
-var shuffled_scale_indices = []
-var shuffled_keys_indices = []
-var shuffled_mode_indices = []
-var shuffled_sequence_indices = []
-var shuffled_scales_index = 0
-var shuffled_keys_index = 0
-var shuffled_mode_index = 0
-var shuffled_sequence_index = 0
-var sequence_number_temp = 0
-var misc_buttons_shown = false
-var octaves_changed = false
-var save_confirm_shown = false
-var reverse_mode_switched = false
+let control_y, inst_x, scale_x, key_x, mode_x, tune_x
+let tuning_slider_shown = false
+let tempo_slider_shown = false
+let drone_vol_slider_shown = false
+let vol_slider_shown = false
+let sequence_slider_shown = false
+let initial_tuning
+let sequence_shuffled
+let shuffled_scale_indices = []
+let shuffled_keys_indices = []
+let shuffled_mode_indices = []
+let shuffled_sequence_indices = []
+let shuffled_scales_index = 0
+let shuffled_keys_index = 0
+let shuffled_mode_index = 0
+let shuffled_sequence_index = 0
+let sequence_number_temp = 0
+let misc_buttons_shown = false
+let octaves_changed = false
+let save_confirm_shown = false
+let reverse_mode_switched = false
 let img_w, img_h, img_y
 let drone_button_longpress_timer = null
 let drone_button_longpressed = false
 
 function create_controls(initial=true){
-	inst_x = 1.55 * U
-	scale_x = chart_x + 4.6 * U + inst_x
-	key_x = chart_x + 13.2 * U + inst_x
-	mode_x = chart_x + 16.5 * U + inst_x
-	control_y = 0//chart_y - 5*U
+	inst_x = 2 * U
+	scale_x = chart_x + 5.5 * U + inst_x
+	mode_x = chart_x + 15 * U + inst_x
+	control_y = 0
 	
 	const button_h = 1.65 * U
 	const button_w = min(4 * U, W - chart_x2)
@@ -44,7 +43,6 @@ function create_controls(initial=true){
 		instrument_select = createSelect()
 		// if (note_count >= 12) 
 		scale_select = createSelect()
-		key_select = createSelect()
 		mode_select = createSelect()
 		create_dropdown(inst_x, control_y, instruments_arr, instrument_select, instrument_name, update_instrument, "instrument_select")
 		create_dropdown(scale_x, control_y, scales_arr, scale_select, scale_name, update_scale, "scale_select")
@@ -53,13 +51,11 @@ function create_controls(initial=true){
 	else{
 		instrument_select.position(inst_x, control_y)
 		scale_select.position(scale_x, control_y)
-		key_select.position(key_x, control_y)
 		mode_select.position(mode_x, control_y)
 
 		let font_size = int(U * 0.65) + "px"
 		instrument_select.style("font-size", font_size)
 		scale_select.style("font-size", font_size)
-		key_select.style("font-size", font_size)
 		mode_select.style("font-size", font_size)
 	}
 
@@ -70,8 +66,6 @@ function create_controls(initial=true){
 	// starting_note = instruments_arr[instrument_index].key
 	// if(instrument_obj.key[0] == 'F') notes_arr = notes_arr_F
 	// else notes_arr = notes_arr_C
-	
-	// create_dropdown(key_x, control_y, notes_arr, key_select, notes_arr[0], update_key, "key_select")
 
 	img_h = int(15.8 * U)
 	img_w = int(img.width / img.height * img_h)
@@ -108,7 +102,6 @@ function create_controls(initial=true){
 	if(initial){
 		HIDE_FING_button = createButton('HIDE ◑|◉|◒')
 		HIDE_FING_button.id('HIDE')
-		// HIDE_FING_button = createButton('HIDE FING')
 		HIDE_FING_button.mousePressed(hide_fingerings)
 	} 
 	HIDE_FING_button.style("font-size", scl2 * 0.85 + "px")
@@ -124,16 +117,6 @@ function create_controls(initial=true){
 	const row3 = row2 - button_h2
 	const row1 = row2 + button_h2
 
-	// if(initial){
-	// 	// to cover up stuff to make things cleaner while the menu is open
-	// 	PLACEHOLDER_button = createButton(' ')
-	// 	PLACEHOLDER_button.id('PLACEHOLDER')
-	// 	PLACEHOLDER_button.hide()
-	// } 
-	// PLACEHOLDER_button.size(U * 15.85, button_h2 * 2)
-	// PLACEHOLDER_button.position(0, row2)
-	
-	// if (note_count == 12){
 	if(initial){
 		MISC_MENU_button = createButton('MISC. MENU')
 		MISC_MENU_button.mousePressed(MISC_MENU_buttons)
@@ -142,35 +125,18 @@ function create_controls(initial=true){
 	MISC_MENU_button.size(1.5 * U, U * 2.775)
 	MISC_MENU_button.position(0, 0)
 	
-	if(initial){
-		HOLD_KEY_button = createButton('HOLD KEY')
-		HOLD_KEY_button.mousePressed(TOGL_instrument)   
-		HOLD_KEY_button.hide()
-	} 
-	HOLD_KEY_button.style("font-size", scl_L + "px")
-	HOLD_KEY_button.size(button_w2b, button_h2)
-	HOLD_KEY_button.position(button_w2 * 4.1, row2)
-	
-	if(initial){
-		HOLD_FING_button = createButton('HOLD FING.')
-		HOLD_FING_button.mousePressed(TOGL_instrument2)
-		HOLD_FING_button.hide()
-	} 
-	HOLD_FING_button.style("font-size", scl_L + "px")
-	HOLD_FING_button.size(button_w2b, button_h2)
-	HOLD_FING_button.position(button_w2 * 4.1, row1)
-	
-	let last_col_x = U * 13.1
+	let last_col_x = U * 13.4
 	
 	if(initial){
 		SAVE_CHART_button = createButton('SAVE CHART')
 		SAVE_CHART_button.mouseReleased(save_confirm)
 		SAVE_CHART_button.id('SAVE_CHART')
 		SAVE_CHART_button.hide()
+		if(note_count != 12) SAVE_CHART_button.style("backgroundColor", "rgb(140,140,140)")
 	} 
 	SAVE_CHART_button.style("font-size", scl_L + "px")
-	SAVE_CHART_button.size(button_w2 - U * 0.1, button_h2 + U * 0.15)
-	SAVE_CHART_button.position(U * 13.35, row3 - U * 0.15)
+	SAVE_CHART_button.size(button_w2, button_h2 + U * 0.15)
+	SAVE_CHART_button.position(last_col_x, row3 - U * 0.15)
 	
 	if(initial){
 		SAVE_CHART_CANCEL_button = createButton('CANCEL')
@@ -180,7 +146,7 @@ function create_controls(initial=true){
 	} 
 	SAVE_CHART_CANCEL_button.style("font-size", scl_L + "px")
 	SAVE_CHART_CANCEL_button.size(button_w2 * 1.4, button_h2)
-	SAVE_CHART_CANCEL_button.position(U * 13.25 + button_w2, row3)
+	SAVE_CHART_CANCEL_button.position(last_col_x + button_w2, row3)
 	
 	if(initial){
 		SAVE_CHART_CONFIRM_button = createButton('CONFIRM')
@@ -190,7 +156,7 @@ function create_controls(initial=true){
 	} 
 	SAVE_CHART_CONFIRM_button.style("font-size", scl_L + "px")
 	SAVE_CHART_CONFIRM_button.size(button_w2 * 1.4, button_h2)
-	SAVE_CHART_CONFIRM_button.position(U * 13.25 + button_w2 * 2.4, row3)
+	SAVE_CHART_CONFIRM_button.position(last_col_x + button_w2 * 2.4, row3)
 	
 	if(initial){
 		DRONE_VOL_button = createButton('DRONE VOL ' + round(default_drone_vol * 100))
@@ -199,7 +165,7 @@ function create_controls(initial=true){
 		DRONE_VOL_button.hide()
 	} 
 	DRONE_VOL_button.style("font-size", int(U * 0.67) + "px")
-	DRONE_VOL_button.size(button_w2 + U*0.15, button_h2)
+	DRONE_VOL_button.size(button_w2 + U * 0.15, button_h2)
 	DRONE_VOL_button.position(last_col_x, row2)
 	
 	if(initial){
@@ -230,6 +196,28 @@ function create_controls(initial=true){
 	VOL_slider.position(U * 16.5, U * 4.5)
 	VOL_slider.size(U * 12)
 	
+	last_col_x -= button_w2b
+
+	if(initial){
+		HOLD_KEY_button = createButton('HOLD KEY')
+		HOLD_KEY_button.mousePressed(TOGL_instrument)   
+		HOLD_KEY_button.hide()
+		if(note_count != 12) HOLD_KEY_button.style("backgroundColor", "rgb(140,140,140)")
+	} 
+	HOLD_KEY_button.style("font-size", scl_L + "px")
+	HOLD_KEY_button.size(button_w2b, button_h2)
+	HOLD_KEY_button.position(last_col_x, row2)
+	
+	if(initial){
+		HOLD_FING_button = createButton('HOLD FING.')
+		HOLD_FING_button.mousePressed(TOGL_instrument2)
+		HOLD_FING_button.hide()
+	if(note_count != 12) HOLD_FING_button.style("backgroundColor", "rgb(140,140,140)")
+	} 
+	HOLD_FING_button.style("font-size", scl_L + "px")
+	HOLD_FING_button.size(button_w2b, button_h2)
+	HOLD_FING_button.position(last_col_x, row1)
+
 	if(initial){
 		UP_button = createButton('▲')
 		UP_button.mousePressed(function() {move_in_select_menu(-1)})
@@ -247,18 +235,19 @@ function create_controls(initial=true){
 		SELECT_MENU_button.hide()
 
 	} 
-	UP_button.style("font-size", scl_L * 2 + "px")
-	UP_button.size(button_w2 * 0.68, button_h2)
-	UP_button.position(button_w2 * 1.93, row2)
-
+	
 	SELECT_MENU_button.style("font-size", scl_L * 1.4 + "px")
 	SELECT_MENU_button.style('transform', 'rotate(270deg)')
-	SELECT_MENU_button.size(int(button_h2 * 2.01), U * 1.26)
-	SELECT_MENU_button.position(button_w2, row2 + U * 1.18)
+	SELECT_MENU_button.size(int(button_h2 * 2.0), U * 1.53)
+	SELECT_MENU_button.position(button_w2 * 1.05, row2 + U * 1.05)
+	
+	UP_button.style("font-size", scl_L * 2 + "px")
+	UP_button.size(button_w2 * 0.7, button_h2)
+	UP_button.position(button_w2 * 2.015, row2)
 
 	DOWN_button.style("font-size", scl_L * 2 + "px")
-	DOWN_button.size(button_w2 * 0.68, button_h2)
-	DOWN_button.position(button_w2 * 1.93, row1)
+	DOWN_button.size(button_w2 * 0.7, button_h2)
+	DOWN_button.position(button_w2 * 2.015, row1)
 
 	if(initial){ 
 		MODE_INC_button = createButton('▶')
@@ -291,16 +280,6 @@ function create_controls(initial=true){
 	MODE_MODE_button.position(0, row2)
 	
 	if(initial){
-		TUNING_button = createButton(str(tuning) + ' Hz')
-		TUNING_button.mousePressed(toggle_tuning_slider)
-		TUNING_button.id('TUNING')
-		TUNING_button.hide()
-	} 
-	TUNING_button.style("font-size", int(U * 0.95) + "px")
-	TUNING_button.size(button_w2 * 1.5, button_h23)
-	TUNING_button.position(button_w2 * 2.6, row2)
-	
-	if(initial){
 		PREV_SCALE_button = createButton('PREV. SCL.')
 		NEXT_SCALE_button = createButton('NEXT SCL.')
 		PREV_SCALE_button.id('PREV_SCALE')	
@@ -312,13 +291,25 @@ function create_controls(initial=true){
 		PREV_SCALE_button.style('backgroundColor', 'rgb(140,140,140)')
 		NEXT_SCALE_button.style('backgroundColor', 'rgb(140,140,140)')
 	} 
+
+	const button_w2c = button_w2 * 0.75
 	PREV_SCALE_button.style("font-size", scl_L * 0.9 + "px")
 	NEXT_SCALE_button.style("font-size", scl_L * 0.9 + "px")
 	PREV_SCALE_button.size(button_w2 * 0.75, button_h2 * 4/3)
 	NEXT_SCALE_button.size(button_w2 * 0.75, button_h2 * 4/3)
-	PREV_SCALE_button.position(button_w2 * 2.6, row2 + button_h23)
-	NEXT_SCALE_button.position(button_w2 * 3.35, int(row2 + button_h23))
+	PREV_SCALE_button.position(last_col_x - 2 * button_w2c, row2 + button_h23)
+	NEXT_SCALE_button.position(last_col_x - button_w2c, int(row2 + button_h23))
 	
+	if(initial){
+		TUNING_button = createButton(str(tuning) + ' Hz')
+		TUNING_button.mousePressed(toggle_tuning_slider)
+		TUNING_button.id('TUNING')
+		TUNING_button.hide()
+	} 
+	TUNING_button.style("font-size", int(U * 0.95) + "px")
+	TUNING_button.size(button_w2 * 1.5, button_h23)
+	TUNING_button.position(last_col_x - button_w2 * 1.5, row2)
+
 	if(initial){
 		TUNING_slider = createSlider(392, 494, tuning, 1)
 		TUNING_slider.input(update_tuning)
@@ -413,12 +404,12 @@ function create_controls(initial=true){
 		PLACEHOLDER2_button.id('PLACEHOLDER2')
 		PLACEHOLDER2_button.hide()	
 	} 
-	PLACEHOLDER2_button.size(button_w2 * 5.35, button_h2 * 2)
+	PLACEHOLDER2_button.size(U * 12.8, button_h2 * 2)
 	PLACEHOLDER2_button.position(U * 1.55, row2)
 	
 	if(initial){
 		SEQUENCE_slider = createSlider(1, seq_arr.length, sequence_number, 1)
-		SEQUENCE_slider.input(update_sequence)
+		SEQUENCE_slider.input(function() {update_sequence(0)})
 		SEQUENCE_slider.hide()
 		SEQUENCE_slider.addClass("slider")
 		SEQUENCE_slider.value(sequence_number)
@@ -427,7 +418,7 @@ function create_controls(initial=true){
 		document.getElementById("SEQUENCE").innerHTML = 'SEQ. ' + seq_chars
 	} 
 	SEQUENCE_slider.position(chart_x + 0.2 * U, control_y + 4.55 * U)
-	SEQUENCE_slider.size(U * 13.55)
+	SEQUENCE_slider.size(U * 12.35)
 
 	
 	if(initial){
@@ -438,19 +429,19 @@ function create_controls(initial=true){
 	} 
 	OCTAVES_button.style("font-size", int(U * 0.85) + "px")
 	OCTAVES_button.size(button_hs, button_hs)
-	OCTAVES_button.position(U * 13.75,  U * 2.9)
+	OCTAVES_button.position(U * 12.5,  U * 2.9)
 	
 	if(initial){
 		REVERSE_button = createButton('◀') // ⬅️
-		REVERSE_button.mousePressed(toggle_reverse_mode)
+		REVERSE_button.mousePressed(function() {direction_mode_switch(-1)})
 		REVERSE_button.id('REV')
 		REVERSE_button.hide()
 		FORWARD_button = createButton('▶') // ➡️
-		FORWARD_button.mousePressed(toggle_forward_mode)
+		FORWARD_button.mousePressed(function() {direction_mode_switch(1)})
 		FORWARD_button.id('FORW')
 		FORWARD_button.hide()
 		BOTH_DIR_button = createButton('◀▶') // ↔️
-		BOTH_DIR_button.mousePressed(toggle_both_directions_mode)
+		BOTH_DIR_button.mousePressed(function() {direction_mode_switch(2)})
 		BOTH_DIR_button.id('BOTH')
 		BOTH_DIR_button.hide()
 		LOOP_button = createButton('🔁')
@@ -461,19 +452,19 @@ function create_controls(initial=true){
 	const scl_L2 = scl_L * 1.5
 	REVERSE_button.style("font-size", scl_L2 + "px")
 	REVERSE_button.size(button_hs, button_hs)
-	REVERSE_button.position(U * 2, U * 2.85)
+	REVERSE_button.position(U * 1.75, U * 2.85)
 
 	BOTH_DIR_button.style("font-size", scl_L2 + "px")
 	BOTH_DIR_button.size(U * 2.25, button_hs)
-	BOTH_DIR_button.position(U * 3.5, U * 2.85)
+	BOTH_DIR_button.position(U * 3.25, U * 2.85)
 
 	FORWARD_button.style("font-size", scl_L2 + "px")
 	FORWARD_button.size(button_hs, button_hs)
-	FORWARD_button.position(U * 5.75, U * 2.85)
+	FORWARD_button.position(U * 5.5, U * 2.85)
 
 	LOOP_button.style("font-size", scl_L2 + "px")
 	LOOP_button.size(button_hs, button_hs)
-	LOOP_button.position(U * 7.75, U * 2.85)
+	LOOP_button.position(U * 7, U * 2.85)
 	
 
 	// if(initial) notes_count_input = createInput(str(note_count))
@@ -501,14 +492,11 @@ function create_controls(initial=true){
 function mode_mode_switch(){
 	if(mode_mode == 'relative'){
 		mode_mode = 'parallel'
-		if(condensed_notes){
-			document.getElementById("MODE_MODE").innerHTML = 'RELATIVE ◀ MODE ▶'
-			MODE_MODE_button.style('backgroundColor', 'rgb(180,180,180)')
-			RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
-		}
-		else{
-			document.getElementById("MODE_MODE").innerHTML = 'PARALLEL // MODE //'
-			MODE_MODE_button.style('backgroundColor', 'rgb(110,150,240)')
+		document.getElementById("MODE_MODE").innerHTML = 'PARALLEL // MODE //'
+		MODE_MODE_button.style('backgroundColor', 'rgb(110,150,240)')
+		if(modes_arr.length >= 2){
+			MODE_INC_button.style('backgroundColor', 'rgb(110,150,240)')
+			MODE_DEC_button.style('backgroundColor', 'rgb(110,150,240)')
 			RAND_MODE_button.style('backgroundColor', 'rgb(110,150,240)')
 		}
 	}
@@ -516,7 +504,11 @@ function mode_mode_switch(){
 		mode_mode = 'relative'
 		document.getElementById("MODE_MODE").innerHTML = 'RELATIVE ◀ MODE ▶'
 		MODE_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
-		RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
+		if(modes_arr.length >= 2){
+			MODE_INC_button.style('backgroundColor', 'rgb(240,240,240)')
+			MODE_DEC_button.style('backgroundColor', 'rgb(240,240,240)')
+			RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
+		}
 	}
 	storeItem("mode_mode", mode_mode)
 	stored_mode_mode = mode_mode
@@ -574,6 +566,7 @@ function MISC_MENU_buttons(){
 
 
 function save_confirm(){
+	if(note_count != 12) return
 	save_confirm_shown = !save_confirm_shown
 	if(save_confirm_shown){
 			SAVE_CHART_CONFIRM_button.show()
@@ -585,17 +578,7 @@ function save_confirm(){
 	}
 }
 
-var dir_override = 0
-
-function toggle_reverse_mode(){
-	direction_mode_switch(-1)
-}
-function toggle_forward_mode(){
-	direction_mode_switch(1)
-}
-function toggle_both_directions_mode(){
-	direction_mode_switch(2)
-}
+let dir_override = 0
 
 function direction_mode_switch(direction){
 	if(direction != dir_override){
@@ -656,8 +639,8 @@ function set_play_button_chars(){
 			direction_chars = '◀'
 
 		} 
-		if(dir_override == 2 || dir_override == -1) PLAY_button.style('border-left', '4px solid #eaa54aff')
-		if(dir_override > 0) PLAY_button.style('border-right', '4px solid #eaa54aff')
+		if(dir_override == 2 || dir_override == -1) PLAY_button.style('border-left', '0.5vw solid #614522ff')
+		if(dir_override > 0) PLAY_button.style('border-right', '0.5vw solid #614522ff')
 	}
 
 	if(chart.repeat) direction_chars += ' 🔁'
@@ -685,7 +668,7 @@ function toggle_loop_mode(){
 // 		// note_count = note_count_temp
 // 		note_count = min(max(int(abs(notes_count_input.value())),1),120)
 // 		notes_count_input.value(str(note_count))
-// 		if(note_count < 12) {
+// 		if(note_count != 12) {
 // 			condensed_notes = false
 // 			condense_notes()
 // 		}
@@ -719,7 +702,6 @@ function toggle_loop_mode(){
 // 	// }
 // }
 
-
 function set_octaves_to_play(value = null){
 	if(value == 1 || value == 2) octaves_to_play = value
 	else if(octaves_to_play == 1) octaves_to_play = 2
@@ -728,7 +710,6 @@ function set_octaves_to_play(value = null){
 	if(currently_playing_scale){
 		chart.playing_scale = false
 	}
-	// console.log('set to ' + octaves_to_play)
 	storeItem("octaves_to_play", octaves_to_play)
 	if(chart.OTP != octaves_to_play){
 		octaves_changed = true
@@ -745,34 +726,6 @@ function set_octaves_to_play(value = null){
 	}
 }
 
-
-// function shuffle_array(array) {
-// 	// let ind = 0 // array[array.length-1]
-// 	// for( var i = 0; i < array.length; i++){ 
-// 	// 		if ( array[i] === ind) { 
-// 	// 				array.splice(i, 1)
-// 	// 				i--
-// 	// 		}
-// 	// }
-// 	for (let i = array.length - 1; i > 0; i--) {
-// 			const j = Math.floor(Math.random() * (i + 1))
-// 			[array[i], array[j]] = [array[j], array[i]]
-// 	}
-// 	// array.push(ind)
-// }
-
-
-// function shuffle_sequence(){
-// 	if(chart.playing_scale){ 
-// 		// sequence_number = int(random(1,6))
-// 		chart.play_scale(sequence_number)
-// 		chart.generate_note_lengths(true)
-// 		shuffle(chart.notes_sequence, true)
-// 		// print(chart.notes_sequence)
-// 	}											
-// }
-
-
 function random_scale(){		
 	scale_name = scales_arr[shuffled_scale_indices[shuffled_scales_index]].name
 	// if (note_count >= 12) 
@@ -786,10 +739,8 @@ function random_scale(){
 	}
 }
 
-
 function random_key(){
 	key_name = notes_arr[shuffled_keys_indices[shuffled_keys_index]]
-	key_select.value(key_name)
 	update_key()
 
 	shuffled_keys_index++
@@ -798,7 +749,6 @@ function random_key(){
 		shuffled_keys_index = 0
 	}
 }
-
 
 function random_sequence(){
 	SEQUENCE_slider.value(shuffled_sequence_indices[shuffled_sequence_index] + 1)
@@ -811,10 +761,11 @@ function random_sequence(){
 	}
 }
 
-function update_sequence(){
+function update_sequence(number = 0){
 	update_seq_display = true
-	sequence_number = SEQUENCE_slider.value()
-	storeItem("sequence_number", sequence_number)
+	if(number == 0) sequence_number = SEQUENCE_slider.value()
+	else SEQUENCE_slider.value(number)
+	if(!isNaN(sequence_number)) storeItem("sequence_number", sequence_number)
 	chart.generate_sequence()
 	if(sequence_number >= 16){
 		OCTAVES_button.style('backgroundColor', 'rgb(160,160,160)')
@@ -836,7 +787,7 @@ function update_sequence(){
 
 function random_mode(){
 	if(modes_arr.length < 2) return
-	if(modes_arr.length < 4){
+	if(modes_arr.length < 5){
 		cycle_mode(1)
 		return
 	}
@@ -852,40 +803,19 @@ function random_mode(){
 	}
 }
 
-
 function mode_change(new_mode_shift, setup){
 	if(modes_arr.length < 2) return
 	mode_shift = new_mode_shift
-	let selected_key
-	if(mode_mode == 'parallel' && !condensed_notes){
-		let selected_note2
-		for(let note of chart.notes){
-			if(note.note_val == 2){
-				selected_note2 = note
-				break
-			}
-		}
-		let index_shift = 0
-		for(i = 0; i < mode_shift; i++){ index_shift += scale_pattern[i] }
-		index_shift = index_shift%12
-		let selected_index = selected_note2.index + 12 - index_shift
-		if(selected_index > 12) selected_index -= 12
-		for (let note of chart.notes){ 
-			if(note.index == selected_index){
-				selected_key = note.note_name
-				break
-			}
-		}
-	}
 	mode_select.value(modes_arr[mode_shift])
-	if(mode_mode == 'parallel' && !condensed_notes){
-		update_mode(false)
-		key_select.value(selected_key)
-		update_key()
+	if(mode_mode == 'parallel'){
+		if(condensed_notes) cycle_mode(1)
+		else{
+			update_mode(false)
+			update_key()
+		}
 	}
 	else update_mode()
 }
-
 
 function update_tuning(){
 	tuning = TUNING_slider.value()
@@ -926,7 +856,7 @@ function update_tempo(){
 	document.getElementById("TEMPO").innerHTML = str(tempo) + ' bpm'
 }
 
-var drone_started = false
+let drone_started = false
 function toggle_drone(){
 	drone_playing = !drone_playing
 	if(drone_playing){
@@ -1110,7 +1040,7 @@ function toggle_sequence_slider(){
 	}
 }
 
-var starting_note, starting_octave, new_instrument
+let starting_note, starting_octave, new_instrument
 
 function update_instrument(initial = true, maintain_fingering, maintain_key){
 	new_instrument = true
@@ -1128,8 +1058,6 @@ function update_instrument(initial = true, maintain_fingering, maintain_key){
 	instrument_obj = instruments_arr.find(x => x.name === instrument_name)
 	starting_note = instrument_obj.key[0]
 	starting_octave = instrument_obj.key[1]
-	key_select.remove()
-	key_select = createSelect()
 	
 	notes_arr = (starting_note == 'F')? notes_arr_F : notes_arr_C
 	
@@ -1142,7 +1070,6 @@ function update_instrument(initial = true, maintain_fingering, maintain_key){
 	}	
 	else if(maintain_key != true) key_name = notes_arr[0]
 
-	create_dropdown(key_x, control_y, notes_arr, key_select, key_name, update_key, 'key_select')
 	update_chart = true
 	chart = new fingering_chart(chart_x, chart_y) //x,y,noteWidth, noteHeight
 	chart.create_fingering_pattern()
@@ -1155,7 +1082,7 @@ function update_instrument(initial = true, maintain_fingering, maintain_key){
 
 
 function update_scale(initial = true, history = false){
-	// print(scale_select.value().slice(scale_select.value().length-1))
+	// console.log(scale_select.value().slice(scale_select.value().length-1))
 	update_chart = true
 	let previous_scale_length = 0
 	if(scale_pattern) previous_scale_length = scale_pattern.length
@@ -1163,9 +1090,9 @@ function update_scale(initial = true, history = false){
 	let scale_mode_shift = 0
 	if (note_count == 12){
 		if(history == true){ 
-			// print(scale_history_index)
+			// console.log(scale_history_index)
 			let scale_history_item = scales_history_list[scale_history_index]
-			// print('scale_history_index = ' + scale_history_index + ', ' + scale_history_item)
+			// console.log('scale_history_index = ' + scale_history_index + ', ' + scale_history_item)
 			scale_mode_shift = scale_history_item[1]
 			let scale_name_shift = scale_history_item[0]
 			if(scale_name == scale_name_shift){
@@ -1193,7 +1120,7 @@ function update_scale(initial = true, history = false){
 	else scale_name = "Chromatic"
 	// if(scale_name.includes('minor')) mode_scale_type = 'minor'
 	// else mode_scale_type = 'Major'
-	// print(mode_scale_type)
+	// console.log(mode_scale_type)
 	// mode_scale_type = (scale_name.includes('minor'))? 'minor':'Major'
 	scale_obj = scales_arr.find(x => x.name === scale_name)
 	
@@ -1208,7 +1135,7 @@ function update_scale(initial = true, history = false){
 	if(scale_obj.mode_names) modes_arr = scale_obj.mode_names
 	else modes_arr = [...mode_numerals]
 	create_dropdown(mode_x, control_y, modes_arr, mode_select, modes_arr[0], update_mode, 'mode_select')
-	mode_scale_type = minor_check()? 'minor':'Major'
+	mode_scale_type = minor_check() ? 'minor' : 'Major'
 	chart.create_fingering_pattern()
 	chart.create_notes(update_label=true,update_color=true)
 	if(chart.playing_scale || playing_paused) restart_scale(true)
@@ -1228,7 +1155,7 @@ function update_scale(initial = true, history = false){
 		scale_history_index = scales_history_list.length-1
 		NEXT_SCALE_button.style('backgroundColor', 'rgb(140,140,140)')
 		if(scales_history_list.length > 1) PREV_SCALE_button.style('backgroundColor', 'rgb(240,240,240)')
-		// print(scales_history_list)
+		// console.log(scales_history_list)
 	}
 	if(mode_needs_to_be_shifted){
 		mode_shift = scale_mode_shift
@@ -1248,7 +1175,7 @@ function update_mode_button(){
 		MODE_DEC_button.style('backgroundColor', 'rgb(150,140,140)')
 	}
 	else{
-		if(modes_arr.length < 4){
+		if(modes_arr.length < 5){
 			document.getElementById("RAND_MODE").innerHTML = 'NEXT MODE'
 			RAND_MODE_button.style('backgroundColor', 'rgb(240,190,190)')
 		}
@@ -1256,12 +1183,12 @@ function update_mode_button(){
 			document.getElementById("RAND_MODE").innerHTML = 'MODE 🔀'
 			RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 		}
-		MODE_INC_button.style('backgroundColor', 'rgb(240,240,240)')
-		MODE_DEC_button.style('backgroundColor', 'rgb(240,240,240)')
+		if(!mode_mode == 'parallel'){
+			MODE_INC_button.style('backgroundColor', 'rgb(240,240,240)')
+			MODE_DEC_button.style('backgroundColor', 'rgb(240,240,240)')
+		}
 	}
 } 
-
-var mode_scale_type = 'Major'
 
 function update_mode(initial = true, history=false){
 	// mode_select.value(modes_arr[mode_shift]) 
@@ -1289,7 +1216,7 @@ function update_mode(initial = true, history=false){
 		scales_history_list.push([scale_name,mode_shift])
 		if(scales_history_list.length > 200) scales_history_list.splice(0,1) // restrict length of undo history.
 		scale_history_index = scales_history_list.length-1
-		// print(scales_history_list)
+		// console.log(scales_history_list)
 	}
 	// storeItem("mode_scale_type", mode_scale_type)
 	storeItem("mode_shift", mode_shift)
@@ -1300,7 +1227,6 @@ function update_mode(initial = true, history=false){
 
 function update_key(initial = true){
 	update_chart = true
-	key_name = key_select.value()
 	selected_key_name = key_name
 	chart.create_fingering_pattern()
 	// if(!condensed_notes)	chart.create_notes(true,true)
@@ -1335,19 +1261,6 @@ function minor_check(){
 	return !major_check
 }
 
-	// if(mode_name.includes('minor') || 
-	// 	 mode_name.includes('crian') ||
-	// 	 mode_name.includes('ygian') ||
-	// 	 mode_name.includes('olian') ||
-	// 	 mode_name.includes('orian') ||
-	// 	 scale_name == 'Augmented'
-	// 	) mode_scale_type = 'minor'
-	// else if(mode_name.includes('Major') ||
-	// 			 mode_name.includes('onian') ||
-	// 			 mode_name.includes('ydian')
-	// 			 ) mode_scale_type = 'Major'
-// }
-
 
 function create_dropdown(x, y, arr, selection_object, start_value, selection_event_function, ID_name){
 	selection_object.position(x, y)
@@ -1368,9 +1281,7 @@ function create_dropdown(x, y, arr, selection_object, start_value, selection_eve
   selection_object.selected(start_value)
   selection_object.changed(selection_event_function)
 	
-  // selection_object.size(100, 100)
-  // selection_object.style("font-family", "Comic Sans MS"); // to make it cursed
-  selection_object.style("font-size", int(U*0.65) + "px")
-  // selection_object.style('text-align', 'center')
+  // selection_object.style("font-family", "Papyrus"); // to make it cursed
+  selection_object.style("font-size", int(U * 0.65) + "px")
 	selection_object.id(ID_name)
 }
