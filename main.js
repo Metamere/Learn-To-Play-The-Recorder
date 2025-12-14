@@ -7,17 +7,23 @@ const interval_colors = [
 	[7.5,85,98] // 4,  Major third, M3
 ]
 p5.disableFriendlyErrors = true;
-let chart
 let display_waveform = true
 let display_staff = true
-let default_instrument_name = "Tenor"
-let default_previous_instrument = "Alto" // for quick toggle ability. Changes with new selection.
+let default_instrument_name, default_previous_instrument_name // for quick toggle ability. Changes with new selection.
 let default_scale_name = "Major"
+let default_instrument_type = 'recorder'
+let	default_recorder_name = "Tenor"
+let default_previous_recorder_name = "Alto"
+let	default_brass_instrument_name = "B♭ Trumpet"
+let default_previous_brass_instrument_name = "Euphonium"
+let	default_Irish_whistle_name = "D Whistle"
+let default_previous_Irish_whistle_name = "D Whistle"
 let default_mode_shift = 0
 let key_name = "C"
 let key_sig
+let chart
 let stored_key_name, stored_mode_shift, stored_repeat_state, stored_mode_mode, stored_select_menu_index
-let stored_condensed_notes_state, stored_hide_fingering_state, stored_display_waveform_state
+let stored_condensed_notes_state, stored_hide_fingering_state, stored_display_waveform_state, stored_instrument_type
 let select_menus_move_list = ['INSTR.', 'SCALE', 'KEY']
 let select_menus_move_index = 1
 let selected_select_menu
@@ -27,10 +33,13 @@ let pitch_bend_semitones = 2
 let default_tuning = 440 // for A4 — can vary slightly between recorders, usually in the range 440-444 Hz. 
 let tuning// = default_tuning
 			// Some might default a bit higher because they can be tuned lower by pulling out the bottom piece a bit.
-let default_tempo = 120 // for scale sequence playback
+let default_base_tempo = 120 // for scale sequence playback
+let default_tempo_multiplier = 1
+let base_tempo, tempo, tempo_multiplier
 let default_vol = 0.35
 let default_drone_vol = 0.15
-let default_sequence_number = sequence_number = 1
+let default_sequence_number = 1
+let sequence_number = 1
 let default_octaves_to_play = 1
 let nominal_vol, nominal_drone_vol, vol, drone_vol, effects_volume_compensation
 let effects_on
@@ -47,7 +56,6 @@ One rough approximation expresses the seven pitches of Central Javanese pelog sc
 24-TET is called the quarter-tone scale
 --------------------------------------- */
 
-// let instrument_type = "brass"
 let instruments_arr
 let mode_name = 'I'
 let mode_proper_name
@@ -56,10 +64,10 @@ let condensed_notes = false
 let hide_fingering = false
 let stylo_mode = false
 let starting_y
-let octave_start, bass_instrument
+let octave_start
 let scale_pattern, scale_offset
 let mode_shift // = 0 // have to start off here
-let previous_instrument, instrument_name, scale_name
+let previous_instrument_name, instrument_name, scale_name
 let mode_scale_type = 'Major'
 let W,H,w,h, unit//, mX, mY
 let update_chart = true
@@ -100,10 +108,24 @@ let chart_x, chart_y, chart_above, chart_h, chart_hy, v_space
 let sequence_chart_buffer
 
 let density
+let midi_output_device = null
+let main_output_channel = 0
+let drone_output_channel = 0
+let midi_output_device_count = 0
+let midi_output_enabled = false
+// let pitch_bend_val
 
 function preload() {
-	instruments_arr = recorder_instruments_arr
+
 	osc = new p5.MonoSynth()
+	
+	recorder_img = loadImage('recorder.jpg') // My trusty wooden alto recorder that I bought used
+	Irish_whistle_img = loadImage('Irish_whistle.jpg')
+	brass_instrument_img = loadImage('brass_instrument.jpg')
+
+	stored_instrument_type = lookup_item("instrument_type", default_instrument_type)
+	if(['recorder', 'brass', 'Irish whistle'].includes(stored_instrument_type)) instrument_type_switch(stored_instrument_type)
+	else instrument_type_switch('recorder')
 
 	osc.setADSR(0.2,0.2,0.75,0.1)  
 	
@@ -160,9 +182,9 @@ function preload() {
 		reverb.connect(delay)
 	}
 
-	img = loadImage('DSCF8169_v1.jpg') // My trusty wooden alto recorder that I bought used
-
-	tempo = lookup_item("tempo", default_tempo)
+	base_tempo = lookup_item("base_tempo", default_base_tempo)
+	tempo_multiplier = lookup_item("tempo_multiplier", default_tempo_multiplier)
+	tempo = base_tempo * tempo_multiplier
 	dir_override = lookup_item("dir_override", 0)
 	stored_repeat_state = lookup_item("repeat_state", 0)
 	stored_key_name = lookup_item("key_name", key_name)
@@ -177,9 +199,12 @@ function preload() {
 	tuning = lookup_item("tuning", default_tuning)
 	sequence_number = lookup_item("sequence_number", default_sequence_number)
 	octaves_to_play = lookup_item("octaves_to_play", default_octaves_to_play)
-	instrument_name = lookup_item("instrument_name", default_instrument_name)
-	previous_instrument = lookup_item("previous_instrument", default_previous_instrument)	
+
 	instrument_obj = instruments_arr.find(x => x.name === instrument_name)
+	if(!instrument_obj){
+		instrument_name = default_instrument_name
+		instrument_obj = instruments_arr.find(x => x.name === instrument_name)
+	} 
 
 	// restore whether sequence display should be shown
 	stored_show_seq = lookup_item("show_seq", true)
@@ -209,6 +234,7 @@ function lookup_item(lookup_key, default_value){
 	return lookup_data
 }
 
+const midi_device_list = []
 function setup(initial=true) {
 
 	if(max(displayWidth,displayHeight) < 1000){ // most likely a mobile display
@@ -235,7 +261,8 @@ function setup(initial=true) {
 	chart_h = 8 * U
 	chart_y = min(8 * U, H - chart_h)
 	chart_hy = chart_y + chart_h
-	chart_above = chart_y - 1.45 * U
+	chart_label_height = 1.45 * U
+	chart_above = chart_y - chart_label_height
 	const v_space_total = H - chart_y - chart_h
 	v_space = ~~min(3 * U, v_space_total)
 	tall_display = (v_space_total > 4 * U)
@@ -247,11 +274,38 @@ function setup(initial=true) {
 		L = W 
 	}
 
-	if(initial)	createCanvas(W, H)
-	else resizeCanvas(W, H)
+	if(initial){
+		WebMidi
+			.enable()
+			.then(onEnabled)
+			.catch(err => alert(err));
 
-	chart = new fingering_chart(chart_x, chart_y)
+		// Function triggered when WEBMIDI.js is ready
+		function onEnabled() {
+
+			// Display available MIDI devices
+			if (WebMidi.outputs.length > 0) {
+				WebMidi.outputs.forEach((device, index) => {
+					midi_device_list.push({ original_index: index, name: device.name })
+					// console.log(`${index}: ${device.name}`)
+					// in case a note or drone was left playing
+					for(let i = 0; i < 128; i++){
+						device.sendNoteOff(i, {channels: [1,2]})
+					}
+					midi_device_list.sort((a, b) => a.name.localeCompare(b.name))
+				})
+				midi_output_device_count = WebMidi.outputs.length
+			}
+		}
+		createCanvas(W, H)
+		chart = new fingering_chart(chart_x, chart_y)
+	}	
+	else{
+		resizeCanvas(W, H)
+	} 
+
 	create_controls(initial)
+
 	update_instrument(initial)
 	update_scale(initial)
 	if(stored_repeat_state){
@@ -275,7 +329,7 @@ function setup(initial=true) {
 		hide_fingerings()
 	}
 	if(stored_condensed_notes_state != condensed_notes){
-		condense_notes()
+		condensed_notes_toggle()
 	}
 	if(stored_display_waveform_state != display_waveform){
 		toggle_waveform_display()
@@ -287,15 +341,32 @@ function setup(initial=true) {
 	if(typeof set_show_seq === 'function') set_show_seq()
 }
 
-function play_oscillator(frequency, duration=0) {
-  playing = true
-	vol = nominal_vol
+function play_oscillator(note, freq=0, duration=0) {
+  if(!freq) freq = note.frequency
+	playing = true
+	vol = min(nominal_vol, 1)
 	osc.amp(vol)
-	note_start_time = ~~millis()
-	if (!osc_started) osc_started = true
-	if(duration > 0) osc.play(frequency, vol, 0, duration) // for when playing a sequence
-	else osc.triggerAttack(frequency, vol)
-	current_frequency = frequency
+	if(default_vol > 0){
+		note_start_time = ~~millis()
+		if (!osc_started) osc_started = true
+		if(duration > 0) osc.play(freq, vol, 0, duration) // for when playing a sequence
+		else osc.triggerAttack(freq, vol)
+	}
+	current_frequency = freq
+	if(midi_output_enabled && note.midi_note != current_midi_note_on) send_midi_note(note, true, duration)
+}
+
+var current_midi_note_on = -1
+function send_midi_note(note, on = true, duration = 0){
+	if(!midi_output_device || !note.midi_note) return
+	if(on){
+		current_midi_note_on = note.midi_note
+		main_output_channel.playNote(note.midi_note, {attack: vol, duration: duration * 1000})
+	}
+	else if(current_midi_note_on > -1){
+		main_output_channel.sendNoteOff(note.midi_note)
+		current_midi_note_on = -1
+	}
 }
 
 let redraw_time = 0
@@ -303,12 +374,14 @@ let redraw_count = 0
 let note_start_time = 0
 let note_duration = 0
 let cleared_waveform = false
+let pressed_note_temp_index = -1
+
 function draw() {
 	if(stylo_mode && pressed_note){
 		note_duration = ~~millis() - note_start_time 
-		if(note_duration > 1000){
-			const vibrato_delta = min(1, map(note_duration, 1000, 1500, 0, 1)) * 0.15 * sin(frameCount * 0.4)
-			vol = nominal_vol + vibrato_delta
+		if(note_duration > 1000 && default_vol > 0){
+			const vibrato_delta = min(1, map(note_duration, 1000, 1500, 0, 1)) * 0.15 * sin(frameCount * 0.35)
+			vol = min(nominal_vol + vibrato_delta, 1.0)
 			const frequency_delta = (vibrato_delta * 10)
 			osc.triggerAttack(frequency + frequency_delta, vol)
 		}
@@ -326,6 +399,7 @@ function draw() {
 			rect(chart_x * 1.02, chart_hy, W, chart_hy + v_space * 2)
 			pop()
 			cleared_waveform = true
+			pressed_note_temp_index = -1
 		}
 	}
 	if(v_space > U && display_waveform && redraw_waveform){
@@ -340,6 +414,7 @@ function draw() {
 		pop()
 
 		if(playing){
+			const rw = U * 3.5
 			cleared_waveform = false
 			push()
 			redraw_time = ~~millis()
@@ -355,12 +430,12 @@ function draw() {
 			let f_factor = 0.49 * (v_space - wt)
 			stroke(wave_color)
 			// stroke(120)
-			let map_points = (L - chart_x + wt) / points
+			let map_points = (L - rw/2) / points
 			let x_offset = chart_x * 1.02
 			let neutral_axis_position = chart_hy + 0.5 * v_space
 			for (let i = 0; i < points; i++){
 				// is the 2e4 factor messing up the scaling on different monitor resolutions? it should be a function of the pixel density, right?
-				let f = f_factor*cos(frequency * i / 2e4) //map( norm*wave[i], -1, 1, 0, 2*U) 
+				let f = f_factor * cos(frequency * i / 2e4) //map( norm*wave[i], -1, 1, 0, 2*U) 
 				vertex(x_offset + i * map_points, neutral_axis_position + f)
 			}
 			endShape()
@@ -370,29 +445,41 @@ function draw() {
 			else if (wavelength < 1){ wavelength = nf(wavelength * 100,1,1); unit = 'cm';}
 			else{wavelength = nf(wavelength, 1, 2)}
 
-			push() // wavelength and frequency text display
-			// rectMode(CORNERS)
-			noStroke()
-			fill(255)
-			let text_pos = [15 * U, chart_hy + v_space + U * 1.1]
-			let text_pos2 = []
-			if(tall_display){
-				text_pos2 = [21 * U, text_pos[1]]
-				rect(x_offset,chart_hy + v_space, W, H) // rect to clear under waveform labels
+			if(pressed_note && pressed_note.index != pressed_note_temp_index){
+				pressed_note_temp_index = pressed_note.index
+				push() // wavelength and frequency text display
+				// rectMode(CORNERS)
+				noStroke()
+				fill(255)
+				let text_pos = []
+				let text_pos2 = []
+				let text_pos3 = []
+				if(tall_display){
+					text_pos = [12 * U, chart_hy + v_space + U * 1.1]
+					text_pos2 = [text_pos[0] + 6 * U, text_pos[1]]
+					text_pos3 = [text_pos2[0] + 5 * U, text_pos[1]]
+					rect(x_offset, chart_hy + v_space, W, H) // rect to clear under waveform labels
+				}
+				else{
+					const L2 = min(L + 2.8 * U, U * 33)
+					const L2b  = L2 + U * 0.5
+					text_pos = [L2, U * 16.8]
+					text_pos2 = [L2, text_pos[1] + text_size]
+					text_pos3 = [L2, text_pos[1] + text_size * 2]
+					const rw = U * 3.5
+					rect(L2b - rw, chart_hy, rw, H) // rect to clear under waveform labels
+				}
+				
+				fill(100)
+				textSize(text_size)
+				textAlign(LEFT,BOTTOM)
+				text(transpose_note(pressed_note.note_display_name, instrument_obj.transposition), text_pos[0] - text_size * 2, text_pos[1])
+				textAlign(RIGHT,BOTTOM)
+				text(pressed_note.current_octave, text_pos[0], text_pos[1])
+				text(nf(frequency, 2, 1) + ' Hz' , text_pos2[0], text_pos2[1])
+				text(wavelength + ' ' + unit, text_pos3[0], text_pos3[1])
+				pop()
 			}
-			else{
-				const L2 = L + 2.8 * U
-				text_pos = [L2, neutral_axis_position + U * 0.06]
-				text_pos2 = [L2, text_pos[1] + text_size]
-				rect(L - 5,chart_hy, W, H) // rect to clear under waveform labels
-			}
-			
-			fill(100)
-			textSize(text_size)
-			textAlign(RIGHT,BOTTOM)
-			text(wavelength + ' ' + unit, text_pos[0], text_pos[1])
-			text(nf(frequency, 2, 1) + ' Hz' , text_pos2[0], text_pos2[1])
-			pop()
 		}
 		redraw_waveform = false
 	}
@@ -411,16 +498,19 @@ function key_shift(input_note=null){
 	}
 	else{
 		for (let note of chart.notes){
-			if (note.contains_above(mouseX, mouseY) &&
-					mode_shift_reference_index === mode_shift_temp_index){
+			if (note.contains_above(mouseX, mouseY) && (mode_shift_temp_index == null ||
+					mode_shift_reference_index === mode_shift_temp_index)){
 				selected_note = note
 			}
 			else if(note.index == mode_shift_temp_index) selected_note = note
 		}
 	}
-	// let intial_selected_note = selected_note
 	if(selected_note) selected_key_name = selected_note.note_name
-	if(mode_shift > 0){ // && !mode_shifted
+	else{
+		console.log("no note somehow?")
+		return false
+	} 
+	if(mode_shift > 0){
 		let index_shift = 0
 		for(i = 0; i < mode_shift; i++){ index_shift += scale_pattern[i] } //  shifted_scale_pattern[i]
 		index_shift = index_shift % 12
@@ -431,20 +521,20 @@ function key_shift(input_note=null){
 			if(note.index == selected_index) selected_note = note // have to select note after key change? Otherwise things get shifted twice?
 		}
 	}
+
 	if(key_name_temp == selected_note.note_name && !mode_shifted){
 		// if((mode_scale_type == 'Major' && intial_selected_note.note_name == 'F♯ G♭') ||
 			 // (mode_scale_type == 'minor' && intial_selected_note.note_name == 'D♯ E♭')) default_sharp = !default_sharp		
-		default_sharp = !default_sharp		
-		if(!mode_shifted) return
+		default_sharp = !default_sharp
 	}
 	frequency = selected_note.frequency
 	update_chart = true
 	key_name = selected_note.note_name
-	update_key()
+	if(!mode_shifted) update_key()
 	return
 }
 
-function condense_notes(){
+function condensed_notes_toggle(){
 	condensed_notes = !condensed_notes
 	storeItem("condensed_notes_state", condensed_notes)
 	stored_condensed_notes_state = condensed_notes
@@ -460,9 +550,9 @@ function condense_notes(){
 		COND_button.style('backgroundColor', 'rgb(240,240,240)')
 	}
 	update_chart = true
-	chart.create_notes(update_label=true,update_color=true)
-	if(chart.playing_scale) restart_scale()
 	set_stylo_mode()
+	chart.create_notes(update_label=true,update_color=true, 'condense notes toggle')
+	if(chart.playing_scale) restart_scale()
 }
 
 function hide_fingerings(){
@@ -473,12 +563,13 @@ function hide_fingerings(){
 	if(hide_fingering){
 		if(condensed_notes)	document.getElementById("COND").innerHTML = '|||'
 		else document.getElementById("COND").innerHTML = '||||||'
-		document.getElementById("HIDE").innerHTML = 'SHOW ◑|◉|◒'
+		if(mobile) document.getElementById("HIDE").innerHTML = '◯ ◯ ◯'
+		else document.getElementById("HIDE").innerHTML = '◯◯◯'
 	} 
 	else{
 		if(condensed_notes)	document.getElementById("COND").innerHTML = '⁞⁞⁞'
 		else document.getElementById("COND").innerHTML = '⁞⁞⁞⁞⁞⁞'
-		document.getElementById("HIDE").innerHTML = 'HIDE ◑|◉|◒'
+		document.getElementById("HIDE").innerHTML = '⬤ ⬤ ⬤'
 	} 
 	update_chart = true
 	set_stylo_mode()
@@ -567,6 +658,10 @@ function move_in_select_menu(direction){
 		instrument_index = (instrument_index + direction + instruments_arr.length) % instruments_arr.length
 		instrument_select.value(instruments_arr[instrument_index].name)
 		update_instrument()
+		if(instrument_type == 'recorder'){
+			HOLD_FING_button.style('backgroundColor', 'rgb(240,240,240)')
+		}
+		HOLD_KEY_button.style('backgroundColor', 'rgb(240,240,240)')
 	}
 	else if(selected_select_menu === 'KEY'){
 		// Find current key index
@@ -593,26 +688,12 @@ function update_select_menu_highlight() {
 	} 
 }
 
-
-function TOGL_instrument(){
-	let temp_name = instrument_name
-	instrument_select.value(previous_instrument)
-	update_instrument(false, false, true)
-	previous_instrument = temp_name
-}
-function TOGL_instrument2(){
-	let temp_name = instrument_name
-	instrument_select.value(previous_instrument)
-	update_instrument(false, true, false)
-	previous_instrument = temp_name
-}
-
 function play_scale(restart = true){
 	if(restart){
 		if(chart.playing_scale){
 			if (playing_note){
 				osc.triggerRelease()
-				playing_note.mouseReleased()
+				playing_note.release()
 			} 
 			chart.playing_scale = false
 			playing_paused = false
@@ -633,7 +714,7 @@ function toggle_pause(disable = false){
 		chart.playing_scale = false
 		if (playing_note){
 			osc.triggerRelease()
-			playing_note.mouseReleased()
+			playing_note.release()
 		} 
 		playing_note = null
 		PLAY_button.style('backgroundColor', 'rgb(240,240,240)')
@@ -641,8 +722,14 @@ function toggle_pause(disable = false){
 	}
 	if(playing_note && chart.scale_notes){
 		playing_paused = !playing_paused
-		if(playing_paused) osc.triggerRelease()
-		else osc.triggerAttack(frequency, vol)
+		if(playing_paused){
+			osc.triggerRelease()
+			if(main_output_channel) send_midi_note(playing_note, false)
+		} 
+		else{
+			osc.triggerAttack(frequency, vol)
+			playing_note.press()
+		} 
 		chart.playing_scale = !chart.playing_scale
 		if(chart.playing_scale)	PLAY_button.style('backgroundColor', 'rgb(255,200,95)')
 		else PLAY_button.style('backgroundColor', 'rgba(182, 139, 60, 1)')
@@ -781,8 +868,8 @@ function generate_info_display(){
 	let scale_str
 	let shift = 1
 	if(scale_pattern.length < note_count){
-		if (mode_select.value().length > 4) mode_proper_name = mode_select.value().slice(mode_select.value().indexOf('· ')+2)
-		else mode_proper_name = scale_name + ' · ' + mode_select.value()
+		if (mode_select.value().length > 4) mode_proper_name = mode_select.value().slice(mode_select.value().indexOf('·')+2)
+		else mode_proper_name = scale_name + '·' + mode_select.value()
 		key_sig = chart.key_signature[0] // selected_key_name
 		
 		if(accidental_count > 5 && mode_shift == 0){
@@ -802,7 +889,6 @@ function generate_info_display(){
 				}
 			}
 		}
-	 
 		// }else if(accidental_count == 7){
 		// 	if(default_sharp)	{ 
 		// 			accidental_str = '7♯'
@@ -819,25 +905,34 @@ function generate_info_display(){
 			let acc_temp = (key_sig.length > 1 )? key_sig[1]:''
 			key_sig = key_sig[0].toLowerCase() + acc_temp
 		}
-		if(scale_name == 'natural minor') scale_str = key_sig + ' · ' + 'minor'
-		if(mode_shift > 0){
-			scale_str = key_sig + ' · ' + mode_proper_name //mode_select.value().slice(mode_select.value().indexOf('· ')+2)
-		}
-		else scale_str = key_sig + ' · ' + scale_name
+
+		let scale_name_str = ''
+		if(mode_shift > 0) scale_name_str = mode_proper_name
+		else if(scale_name == 'natural minor') scale_name_str = 'minor'
+		else scale_name_str = scale_name
+		let scale_acc_str = ''
 		if (chart.accidental_type != 'ALL' && accidental_count > 0){
-			scale_str += ' (' + accidental_count + chart.accidental_type + ')'
+			scale_acc_str = accidental_count + chart.accidental_type
 		}
+		let separator_str1 = ' · ' 
+		let separator_str2 = ' · '
+		const total_length = textWidth(key_sig + scale_name_str + scale_acc_str) / U
+		if(total_length > 10) separator_str2 = '·'
+		if(total_length > 10.6) separator_str1 = '·'
+		// console.log(total_length)
+		scale_str = `${key_sig}${separator_str1}${scale_name_str}${scale_acc_str ? separator_str2 + scale_acc_str : ''}`
 		shift = 1.2
 	}
 	else if(note_count == 12) scale_str = 'The Chromatic Scale'
 	else scale_str = str(note_count) + '-TET'
 	const x_pos = U * 0.25
 	const y_pos2 = U * 0.15
+	const x_pos2 = y_pos2
 	push()
 		if(mode_shift > 0) fill(140, 80, 0)
-		text(scale_str, x_pos, 0)
+		text(scale_str, x_pos2, 0)
 		fill(160) // horizontal dashed line
-		if(scale_pattern.length != 12) text(' _'.repeat(17), 0, y_pos2)
+		if(scale_pattern.length != 12) text(' _'.repeat(16), 0, y_pos2)
 	pop()
 	if(note_count == 12){
 		scale_factor = 6 + 0.5 * max(0,(fields - 3))
@@ -845,7 +940,7 @@ function generate_info_display(){
 		textSize(size * 0.95)
 		for(i = 0; i < fields; i++){
 			let alt_text = scale_obj.alt[alt_index][i]
-			text(alt_text, x_pos, y_pos2 + size * (i+shift))
+			text(alt_text, x_pos, y_pos2 + size * (i + shift))
 		}
 	}
 	pop()
@@ -889,8 +984,9 @@ function go_fullscreen(){
 
 function windowResized(){
 	// prevents phone autorotate from activating setup if you accidentally rotate into portrait mode
-	if(!(window.innerWidth === H && window.innerHeight === W && W > H)){
-		setup(false) 
+	// if(!(window.innerWidth === H && window.innerHeight === W && W > H)){
+	if(!((windowWidth === H && windowHeight === W) || (windowWidth === W && windowHeight === H))){
+		setup(false)
 	} 
 }
 
@@ -919,7 +1015,7 @@ function update_effects_controls(control_value){
 	else fill(0,200)
 	rect(w1 / 2, y3, w1 * 0.8, U / 2)
 	fill(0)
-	textSize(U * 0.75)
+	textSize(U * 0.7)
 	text(nf(dry_wet_ratio,0,2), U * 0.75, y1 + U * 0.3)
 	pop()
 	if(effects_on && dry_wet_ratio == 0){
@@ -947,6 +1043,7 @@ function update_effects_controls(control_value){
 let effects_controls = false
 let effects_controls_primed = false
 let pattern_mode_shift_primed = false
+let not_dragged = true
 let pattern_mode_shift_starting_position = 0
 let	key_shift_primed = false
 let	x_start = 0
@@ -960,37 +1057,48 @@ let direction_change_tracking_left = 0
 let y_move_dir = 0
 
 function input_pressed(){
+	not_dragged = true
 	x_start = mouseX
 	y_start = mouseY
 	if(!audio_started){
 		userStartAudio()
 		audio_started = true
+		return
 	} 
+
 	if(mouseY > chart_hy && mouseX > chart_x * 1.02 && W > 1000){
 		toggle_waveform_display()
+		return
 	}
-	if(!in_effects_control_area(mouseX, mouseY)){
-		if(effects_controls){
-			effects_controls = false
-			image(img, 0, img_y, img_w, img_h)
-		} 
-		if(chart) chart.mousePressed()
-	}
-	else {
-		effects_controls_primed = true
-	}
+	
 	if(in_seq_display(mouseX, mouseY)){
 		seq_press_start = ~~millis()
 		sequence_display_toggle_primed = true
 		sequence_change_primed = true
 		sequence_control_change_primed = true
+		return
+	}
+	else if(in_pattern_representation(mouseX, mouseY) && note_count == 12){
+		pattern_mode_shift_primed = true
+		return
 	}
 	else if(in_staff_display(mouseX, mouseY)){
 		key_shift_primed = true
 		staff_display_toggle_primed = true
+		return
 	}
-	else if(in_pattern_representation(mouseX, mouseY) && note_count == 12){
-		pattern_mode_shift_primed = true
+
+	if(instrument_types_shown || midi_outputs_shown) return
+
+	if(!in_effects_control_area(mouseX, mouseY)){
+		if(effects_controls){
+			effects_controls = false
+			image(img, 0, img_y, img_w, img_h)
+		} 
+		if(chart) chart.press_note()
+	}
+	else {
+		effects_controls_primed = true
 	}
 }
 
@@ -998,6 +1106,7 @@ function input_dragged(){
 	// cancel sequence long-press if the user moves significantly while pressing
 	const x_move = int(mouseX - x_start)
 	const y_move = int(mouseY - y_start)
+	not_dragged = (abs(x_move) < U * 0.5 && abs(y_move) < U * 0.5)
 	let x_move_dir = 0
 	if(sequence_change_primed || sequence_control_change_primed){
 		// small movement tolerance based on UI unit `U`
@@ -1110,7 +1219,8 @@ function input_dragged(){
 			}
 		}
 	}
-	else if(chart) chart.mousePressed()
+	else if(instrument_types_shown || midi_outputs_shown) return
+	else if(chart) chart.press_note()
 }
 
 function input_released() {
@@ -1151,8 +1261,8 @@ function input_released() {
 		effects_controls_primed = false
 		return
 	}
-	else if(!sequence_change_primed && !sequence_control_change_primed && !key_shift_primed && !pattern_mode_shift_primed &&
-		mouseY > chart_above && mouseY < chart_y && mouseX > chart_x && mouseX < chart_end 
+	else if(not_dragged && !sequence_change_primed && !sequence_control_change_primed && !key_shift_primed && !pattern_mode_shift_primed && !instrument_types_shown && 
+		mouseY > chart_above && mouseY < chart_y && mouseX > chart_x && mouseX < chart_end
 		&& !(mode_mode == 'parallel' && (mode_shifted || (condensed_notes && abs(mouseX - x_start_temp) > U))) ){
 		key_shift()
 	} 
@@ -1179,7 +1289,7 @@ function input_released() {
  	if(chart && chart.playing_scale == false){
 		playing = false
 		if (pressed_note != null){
-			pressed_note.mouseReleased()
+			pressed_note.release()
 			pressed_note = null
 			osc.triggerRelease()
 			note_start_time = 0
@@ -1192,17 +1302,37 @@ let saved_chart_graphics = false
 
 function save_chart(){
 	if(note_count != 12) return
+	// let alt_chart1 = (instrument_name.includes('Trumpet') && condensed_notes)
 	let rows = 4
 	let cols = 3
+	let chart_height = chart_h
 	if(scale_pattern.length == 12){ // chromatic scale, only need one.
 		rows = 1
 		cols = 1
 	}
-	const dims = [int(chart_x), int(chart_above), int(chart_end-chart_x), int(chart_y+chart_h-chart_above)]
-	const margin = int(U * 0.2)
+	else if(instrument_type == 'Irish whistle'){
+		chart_height *= 0.75
+		// need to run through keys here and check if there are at least 
+		// scale_pattern.length + 1 notes in a row that are playable
+
+	}
+	else if(instrument_name.includes('Trumpet')){
+		if(condensed_notes){
+			rows = 6
+			cols = 2
+			chart_height *= 0.375
+		}
+		else chart_height *= 0.625
+	}
+
+	const total_keys = rows * cols
+	const H1 = int(chart_y - chart_above + chart_height)
 	const W1 = int(chart_end - chart_x)
-	const H1 = int(chart_y + chart_h - chart_above)
-	const footer_H = int(H1 * 0.15) + margin
+	const dims = [int(chart_x), int(chart_above), W1, H1]
+	const margin = int(U * 0.2)
+	const WP = int(U * 12.75) // pattern rep width
+	const HP = int(U) // pattern rep height
+	const footer_H = max(int(H1 * 0.15) + margin, HP + 2 * margin)
 	const W2 = cols * W1 + (cols - 1) * margin
 	const w2 = W2/2
 	const H2 = rows * H1 + (rows - 1) * margin + footer_H
@@ -1217,28 +1347,57 @@ function save_chart(){
 
 	full_chart.background(0)
 
-	for(let count = 0; count < rows * cols; count++){
-		if(condensed_notes){ // have to uncondense and then recondense for it to work properly?
-			condense_notes()
-			key_shift(chart.notes[count])
-			update_key()
-			condense_notes()
-		} else{
-			key_shift(chart.notes[count])
-			update_key()
+	let starting_key = instrument_obj.key ? instrument_obj.key : 'C'
+
+	// Calculate the total interval shift for the current mode
+	let mode_shift_offset = 0
+	for(let i = 0; i < mode_shift; i++){
+		mode_shift_offset += scale_pattern[i]
+	}
+
+	// Find the index of starting_key in notes_arr
+	let starting_index = -1
+	for(let i = 0; i < notes_arr.length; i++){
+		if(notes_arr[i].includes(starting_key)){
+			starting_index = i
+			break
 		}
+	}
+
+	// Transpose backwards by the mode offset
+	let target_index = (starting_index - mode_shift_offset) % 12
+	if(target_index < 0) target_index += 12
+
+	let target_root = notes_arr[target_index - 1]
+
+	// If current key doesn't match the target root, update it
+	if(key_name !== target_root){
+		key_name = target_root
+		update_key()
+	}
+
+	let key_index = notes_arr.findIndex(x => x === key_name)
+	// console.log(key_index)
+	// const condense_toggle_required = condense_notes
+	for(let count = 0; count < total_keys; count++){
+		const final = (count == total_keys - 1)
+		// if(condense_toggle_required) condensed_notes_toggle()
+		key_index = (key_index + 1 + notes_arr.length) % notes_arr.length
+		key_name = notes_arr[key_index]
+		update_key(final, !final)
+		// if(condense_toggle_required) condensed_notes_toggle()
+		
 		let key_chart = better_get(dims[0],dims[1], dims[2], dims[3])
 
-		const x = (W1 + margin) * int(count/rows)
-		const y = (H1 + margin) * (count%rows)
+		const x = (W1 + margin) * int(count / rows)
+		const y = (H1 + margin) * (count % rows)
 		full_chart.image(key_chart, ~~x, ~~y, W1, H1)
+		// break
 	}
 	let save_str
-	if(mode_shift == 0 || mode_select.value().indexOf('· ') == -1) save_str = scale_name
-	else mode_select.value().slice(mode_select.value().indexOf('· ') + 2) // remove the roman numerals
-	
-	const WP = int(U * 13)
-	const HP = int(U * 1.2)
+	if(mode_shift == 0 || mode_select.value().indexOf('·') == -1) save_str = scale_name
+	else save_str = mode_select.value().slice(mode_select.value().indexOf('·') + 2) // remove the roman numerals
+
 	const text_pos = footer_H * 0.45
 	full_chart.translate(0, (H2 - footer_H + margin))
 	full_chart.noStroke()
@@ -1255,10 +1414,10 @@ function save_chart(){
 		full_chart.text(instrument_name, W2 - U * 0.5, text_pos)
 	} 
 	else{
-		let pattern_representation = better_get(int(U * 1.0), int(U * (0.7 + 0.1 * mobile)), WP, HP)
+		let pattern_representation = better_get(int(U * 1.5), int(U * 0.9), WP, HP)
 		full_chart.textAlign(RIGHT,CENTER)
 		full_chart.text(save_str, w2 - WP * 0.8, text_pos)
-		full_chart.image(pattern_representation, int(w2 - WP * 0.5), int(footer_H * 0.03), WP, HP)
+		full_chart.image(pattern_representation, int(w2 - WP * 0.5), int((footer_H - (HP + margin)) / 2), WP, HP)
 		full_chart.textAlign(LEFT,CENTER)
 		full_chart.text(instrument_name, w2 + WP * 0.8, text_pos)
 	}
@@ -1324,8 +1483,8 @@ function keyPressed() {
 		if(key_L === 's') save_chart()	
 		else if (key_L === 'q') clearStorage()
 		else if (key_L === 'l'){
-			console.log(getItem("scale_name") + ', ' + getItem("mode_shift")  + ', ' + getItem("previous_instrument") + ', ' + getItem("instrument_name"))
-		} 
+			console.log(getItem("scale_name") + ', ' + getItem("mode_shift")  + ', ' + getItem("previous_instrument_name") + ', ' + getItem("instrument_name"))
+		}
 	}
 	else{
 		if (keyCode === LEFT_ARROW) cycle_mode(-1)
@@ -1380,8 +1539,14 @@ function toggle_staff_display(){
 	if(!display_staff){
 		fill(255)
 		rectMode(CORNERS)
-		rect(U * 14.2, U * 6.4, U * 16.05, U * 0.9)
-		rect(U * 13.5, U * 6.4, U * 14.5, U * 3)
+		const x0 = chart.sd.x0
+		const y0 = chart.sd.y0
+		const M2 = chart.sd.M2
+		const x1 = chart.sd.x1
+		const y3 = chart.sd.y3
+
+		rect(x0 - M2, y3 - M2, x1 + M2, y0 + M2) // clear staff area
+		rect(x0 - 1.2 * U, y3 + U, x0, y0)  // clear clef area
 	}
 	else draw_staff_with_note_range()
 	pop()
@@ -1421,24 +1586,42 @@ function in_seq_display(x, y){
 }
 
 function in_staff_display(x, y){
-	if(vol_slider_shown || drone_vol_slider_shown || tempo_slider_shown || sequence_slider_shown
-		|| misc_buttons_shown || tuning_slider_shown || save_confirm_shown){
+	if(tempo_slider_shown || misc_buttons_shown){
 		return false
 	}
 	return (U * 13.5 <= x && x <= U * 16 && U * 1.5 <= y && y <= U * 6.25)
 }
 
 function in_pattern_representation(x, y){
-	if(vol_slider_shown || drone_vol_slider_shown || tempo_slider_shown || sequence_slider_shown
-		|| tuning_slider_shown || scale_pattern.length == 12){
+	if(tempo_slider_shown || scale_pattern.length == 12){
 		return false
 	}
-	return (U * 1.5 <= x && x <= U * 13.25 && U <= y && y <= U * 4.25)
+	const y_limit_factor = (misc_buttons_shown || sequence_slider_shown) ? 2.8 : 4.25
+	return (U * 1.5 <= x && x <= U * 13.25 && U <= y && y <= U * y_limit_factor)
 }
 
 function find_note_index(){
 	for (let note of chart.notes){
-		if (note.contains_above(mouseX, mouseY)) return [note.index, note.scale_index, note.note_name]
+		if (note.contains_above(mouseX, mouseY)) return [note.index, note.chart_index, note.note_display_name + note.current_octave]
+	}
+	return false
+}
+
+function transpose_note(current_note, transpose_semitones) {
+	if (current_note === undefined) return false
+  let current_index = note_to_index[current_note]
+  if ( transpose_semitones === 0 || transpose_semitones === 12 || 
+		transpose_semitones === undefined || current_index === undefined) return current_note
+
+  let new_index = (current_index + transpose_semitones + 12) % 12
+  let new_note = index_to_note[new_index]
+
+	if(new_note.natural !== undefined) return new_note.natural
+  else if (chart.accidental_type == '♭' || (chart.accidental_type == 'ALL' && !default_sharp)){
+    return new_note.flat
+  }
+	else if (chart.accidental_type == '♯' || (chart.accidental_type == 'ALL' && default_sharp)){
+    return new_note.sharp
 	}
 	return false
 }

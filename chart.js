@@ -2,19 +2,20 @@ let val = 400
 let col0 = [200] // gray
 let col1 = [50, 0.2 * val, 0.5 * val] // standard highlight
 let col2 = [0.55 * val * 0.88, 0.37 * val * 0.88, 0] // octave indication //
+let col_set = [col0, col1, col2]
 
 let f_span, fingering_pattern, drone_freq
 let instrument_obj, notes_arr, scale_arr_index
 let chart_end = 0
 let scale_notes_length_temp = 0
 let redraw_notes = true
-let lowest_note = -1000
 let color_count = 0
 let draggable = false
 let accidental_notes = ''
 let	accidental_count = 0
 let update_seq_display, note_span, bend_factor
 let note_index, note_index_temp
+let midi_pitch_bend = 0
 
 const seq_display = {}
 
@@ -25,21 +26,28 @@ while (n--) seq_arr[n] = n + 1
 class fingering_chart {
 	
 	constructor(x, y) {
+		pressed_note_temp_index = -1
 		bend_factor = pow(2, pitch_bend_semitones/note_count)
 		this.x = x
 		this.y = y
 		this.above = int(this.y - U * 1.45)
-		this.note_height = chart_h
-		this.bend_threshold = int(this.note_height / (15 - 7 * mobile))
-		this.divide = chart_y + this.note_height * 0.5
-		
-		bass_instrument = (instrument_obj.lowest <= -16)? true : false
-		
-		if (note_count < 12){
-			this.length = min(28, max(24, 3.5 * note_count, int(28 * note_count / 12)))
+
+		if (note_count !== 12){ // for 5-TET, 7-TET, etc.
+			this.chart_notes_count = min(28, max(24, 3.5 * note_count, int(28 * note_count / 12)))
 			stylo_mode = true
-		} 
-		else this.length = recorder_fingerings.length - bass_instrument // exclude last note for bass instruments
+		}
+		else{
+			this.chart_notes_count = fingering_data.length
+			if(instrument_type == 'recorder'){
+				// exclude last note for bass recorders
+				if(instrument_obj.bass_instrument) this.chart_notes_count-- 
+			}
+			else if(instrument_type == 'brass'){
+				// too many notes to fit otherwise when not condensed, so we need to wrap to a second row
+				this.wrap_point = instrument_obj.wrap_point 
+			}
+		}
+
 		this.on_notes = 0
 
 		this.repeat = stored_repeat_state
@@ -57,7 +65,7 @@ class fingering_chart {
 		this.create_frequencies()
 		this.create_fingering_pattern()
 
-		this.create_notes(true, true)
+		this.create_notes(true, true, 'constructor')
 		if (note_count < 12) {
 			this.OTP = max(2, octaves_to_play) // Change to more octaves for 5-TET
 			octaves_to_play = this.OTP
@@ -79,6 +87,21 @@ class fingering_chart {
 		this.first_scale_note = null
 		this.last_scale_note = null
 		update_seq_display = true
+		this.bass_instrument = instrument_obj.bass_instrument ? 1 : 0
+
+		// staff dimensions
+		const x0 = U * 14.4
+		const y0 = U * 6.4 // lowest part on screen
+		const M = U * 0.15
+		const M2 = M/2
+		const xm = x0 + U
+		const w = U * 1.55
+		const h = U * 5.5
+		const S = U * 0.4
+		const x1 = x0 + w
+		const y3 = y0 - h
+		const y_pos_staff = y0 - M - U * 1.5 - this.bass_instrument * S
+		this.sd = { x0, y0, M, M2, xm, w, S, x1, y3, y_pos_staff }
 	}
 
 	_handlePlayingScale() {
@@ -100,7 +123,7 @@ class fingering_chart {
 		this.time = millis() * 0.001
 		this.interval_time = this.notes_sequence_lengths[this.current_note_index]
 
-		if (playing_note) playing_note.mouseReleased()
+		if (playing_note) playing_note.release()
 
 		const seq_index = (this.dir == -1) ? (this.notes_sequence.length - 1 - this.current_note_index) : this.current_note_index
 		const index1 = this.notes_sequence[seq_index]
@@ -113,8 +136,8 @@ class fingering_chart {
 		playing_note = this.scale_notes[min(max(index2 + this.index_offset, 0), this.scale_notes.length - 1)]
 		if(playing_note){
 			frequency = playing_note.frequency
-			// console.log(playing_note.note_display_name, playing_note.scale_index - 1, this.sequence_note_index)
-			playing_note.mousePressed(this.interval_time * 0.8)
+			// console.log(playing_note.note_display_name, playing_note.chart_index - 1, this.sequence_note_index)
+			playing_note.press(this.interval_time * 0.8)
 		}
 		else{
 			console.log('no playing_note')
@@ -162,27 +185,10 @@ class fingering_chart {
 		fingering_pattern = []
 		if (note_count != 12) scale_pattern = Array(note_count).fill(1)
 		else scale_pattern = scale_obj.pattern
-		let sig_arr
-		if (instrument_obj.key[0] == 'F') {
-			notes_arr = notes_arr_F
-			if (mode_scale_type == 'Major') {
-				sig_arr = major_key_signatures_F
-			} else {
-				sig_arr = minor_key_signatures_F
-			}
-		} 
-		else {
-			notes_arr = notes_arr_C
-			if (mode_scale_type == 'Major') {
-				sig_arr = major_key_signatures_C
-			} else {
-				sig_arr = minor_key_signatures_C
-			}
-		}
+		notes_arr = shift_array(instrument_obj.shift_amount)
 
 		octave_start = notes_arr.indexOf(key_name)
-		if(!octave_start) octave_start = 0
-		this.key_sig2 = sig_arr[octave_start]
+		if(octave_start === -1) octave_start = 0
 
 		let position = octave_start
 
@@ -192,8 +198,6 @@ class fingering_chart {
 			}
 		}
 		
-		this.key_signature = sig_arr[octave_start % 12]
-
 		let start = false
 		let ind = 0
 		// find the index position of the first active note in the full fingering chart.
@@ -210,14 +214,14 @@ class fingering_chart {
 		drone_freq = 0
 		this.on_notes = 0
 		// set notes in full fingering chart to 0 if off, 1 if on, 2 if on and the root note
-		for (let i = 0; i < this.length; i++) {
+		for (let i = 0; i < this.chart_notes_count; i++) {
 			let val = 0
 			if (i == position) {
 				if (i == octave_start || (i - octave_start) % note_count == 0) {
 					val = 2
 					if (drone_freq == 0) {
 						let multiplier = 0.25
-						const target_freq = this.freqList[i]
+						const target_freq = this.freq_list[i]
 						while(drone_freq < 40){
 							drone_freq = target_freq * multiplier
 							multiplier *= 2
@@ -306,17 +310,24 @@ class fingering_chart {
 	}
 
 	create_frequencies() {
-		lowest_note = instrument_obj.lowest
-
+		const lowest_note = instrument_obj.lowest + (instrument_obj.transposition ? instrument_obj.transposition : 0)
 		let current_freq
-		this.freqList = []
-		for (let i = 0; i < this.length; i++) {
+		this.freq_list = []
+		this.midi_note_list = []
+		for (let i = 0; i < this.chart_notes_count; i++) {
 			current_freq = round(tuning * Math.pow(2, (lowest_note + i) / note_count),3)
-			this.freqList.push(current_freq)
+			this.freq_list.push(current_freq)
+			this.midi_note_list.push(lowest_note + i + 69)
 		}
 	}
-
-	create_notes(update_label, update_color) {
+	
+	create_notes(update_label, update_color, source) {
+		// if(source) console.log(source)
+		this.note_height = (instrument_type == 'brass' && condensed_notes == false) ? chart_h / 2 : chart_h
+		this.bend_threshold = int(this.note_height / (15 - 7 * mobile))
+		if(instrument_type == 'Irish whistle') this.divide = chart_y + this.note_height * 0.75
+		else this.divide = chart_y + this.note_height * 0.5
+		chart_end = 0
 		note_span = null
 		this.notes = []
 		this.all_notes = []
@@ -326,65 +337,74 @@ class fingering_chart {
 		// else this.width_factor = min(2, Math.floor(28/this.on_notes*4)/4)
 		const w = int(U * this.width_factor)
 		let x = 0
-		fill(0)
-		noStroke()
-		textAlign(CENTER, TOP)
-		textSize(w / 4)
+		let y = 0
+		if(update_label || update_color){
+			fill(0)
+			noStroke()
+			textAlign(CENTER, TOP)
+			textSize(w / 4)
 
-		let COL
+			push()
+			// clear the old notes --------------
+			rectMode(CORNERS)
+			fill(255)
+			rect(chart_x * 1.025, this.y + this.note_height, W, H) // clear below the chart
+			// clear out chart area
+			if (stylo_mode) rect(chart_x * 1.025, chart_y, chart_x2, chart_y + chart_h)
+			pop()
+		}
+		
 		color_count = 0
-		if (instrument_obj.key[0] === 'F') color_count += 3
-		push()
-		// clear the old notes --------------
-		fill(255)
-		rectMode(CORNERS)
-		if (chart_end != 0 && update_label) rect(chart_x * 1.025, chart_above, chart_x2, chart_y)
-		if (chart_end != 0 && update_color) rect(chart_x * 1.025, chart_y, chart_x2, chart_y + chart_h)
-		pop()
-		let scale_index = 0
+		if (instrument_obj.key === 'F') color_count += 3
+		let chart_index = 0
 		let key_sig_note = false
 		let key_sig
 		this.first_scale_note_index = null
-		for (let i = 0; i < this.length; i++) {
-			const freq = this.freqList[i]
-			this.all_notes.push(new note(this.x + x, this.y, w, this.note_height, [0], freq, i,
-				i + 1, 0, 0, this.accidental_type))
-			key_sig_note = false
-			if (fingering_pattern[i] == 0) {
-				if (condensed_notes) {
-					if (str(notes_arr[i % note_count]).length === 1) color_count++
-					continue
-				}
-				COL = col0
+		let wrapped = false
+		let divide2 = this.divide
+		for (let i = 0; i < this.chart_notes_count; i++) {
+			if(!condensed_notes && !wrapped && i > this.wrap_point){
+				y += this.note_height
+				divide2 += this.note_height
+				x -= w * 12
+				wrapped = true
 			}
-			else{ 
-				if(this.first_scale_note_index == null){
-					this.first_scale_note_index = i
+			const freq = this.freq_list[i]
+			const midi_note = this.midi_note_list[i]
+			this.all_notes.push(new note(this.x + x, this.y + y, w, this.note_height, divide2, [255,0,0],//col_set[1], 
+				freq, midi_note, i, i + 1, 0, 0, this.accidental_type, wrapped))
+				key_sig_note = false
+				if (fingering_pattern[i] == 0) {
+					if (condensed_notes) {
+						if (str(notes_arr[i % note_count]).length === 1) color_count++
+						continue
+					}
 				}
-				this.last_scale_note_index = i
-				
-				if(fingering_pattern[i] == 1) COL = col1
 				else{ 
-					COL = col2
-					key_sig_note = true
+					if(this.first_scale_note_index == null){
+						this.first_scale_note_index = i
+					}
+					this.last_scale_note_index = i
+					
+					if(fingering_pattern[i] == 2) key_sig_note = true
 				}
-			}
-			// if(freq > 1400) console.log(freq)
-			scale_index++
-			this.notes.push(new note(this.x + x, this.y, w, this.note_height, COL, freq, i, 
-				scale_index, update_label, update_color, this.accidental_type))
-			if(!diatonic && key_sig_note) key_sig = this.notes[this.notes.length-1].note_display_name
+				chart_index++
+			this.notes.push(new note(this.x + x, this.y + y, w, this.note_height, divide2, col_set[fingering_pattern[i]], 
+				freq, midi_note, i, chart_index, update_label, update_color, this.accidental_type, wrapped))
+			if(key_sig_note) key_sig = this.notes[this.notes.length - 1].note_display_name
 			x += w
+			chart_end = max(chart_end, this.x + x + w * 0.0125)
 		}
-		chart_end = this.x + x + w * 0.0125
-		push()
-		strokeWeight(int(U / 14))
-		strokeCap(SQUARE)
-		stroke(0)
-		line(this.x, Math.ceil(this.y - U * 1.475), chart_end, Math.ceil(this.y - U * 1.475)) // upper horizontal divider line
-		line(this.x, this.y + U * 0.035, chart_end, this.y + U * 0.035) // lower horizontal divider line
-		pop()
-		if(!diatonic) this.key_signature = [key_sig, accidental_count]
+		if(update_label || update_color){
+			push()
+			strokeWeight(int(U / 14))
+			strokeCap(SQUARE)
+			stroke(0)
+			line(this.x, Math.ceil(this.y - U * 1.475), chart_end, Math.ceil(this.y - U * 1.475)) // upper horizontal divider line
+			line(this.x, this.y + U * 0.035, chart_end, this.y + U * 0.035) // lower horizontal divider line
+			pop()
+		}
+		this.key_signature = [key_sig, accidental_count]
 		note_span = this.last_scale_note_index - this.first_scale_note_index
 	}
 
@@ -419,42 +439,53 @@ class fingering_chart {
 		}
 	}
 
-	mousePressed() {
+	press_note() {
 		if (mouseY < chart_y - chart_above || mouseY > chart_y + chart_h) return
 		for (let note of this.notes) {
 			if (note.contains(mouseX, mouseY)) {
 				if (mode_shift_temp_index == null &&
-					(mouseY < this.divide || (mouseY > this.divide && note.note_val > 0))) {
+					(mouseY < note.divide || (mouseY > note.divide && note.playable))) {
 					if (chart.playing_scale) chart.playing_scale = false
 					frequency_temp = note.frequency
 					note_index_temp = note.index
 					if(starting_y == null) starting_y = mouseY
 					if (note_index != note_index_temp || pressed_note == null) {
-						if (pressed_note) pressed_note.mouseReleased()
-						if(stylo_mode || note_count != 12) note.mousePressed(0, mouseY/U < 10)
-						else note.mousePressed(0, 0)
+						if (pressed_note) pressed_note.release()
+						if(stylo_mode || note_count != 12) note.press(0, mouseY/U < 10)
+						else note.press(0, 0)
 						pressed_note = note
 						frequency = frequency_temp
 						note_index = note_index_temp
 						redraw_waveform = true
 						playing_note = null
 						bend_started = false
+						midi_pitch_bend = 0
+						if(main_output_channel) main_output_channel.sendPitchBend(0)
 						starting_y = null
 					}
 					else if(stylo_mode || note_count != 12){
-						note_start_time = ~~millis()
-						const ht = this.note_height
-						const Y_move = abs(mouseY - starting_y)
-						const bend_up = mouseY - starting_y < 0
-						if(Y_move > this.bend_threshold || bend_started){
-							const pitch_bend_factor = min(Y_move / ht * 2.5, 1)
-							bend_started = true
-							pitch_bend_amount = pitch_bend_factor * (bend_up? note.freq_bend_above : note.freq_bend_below)
-							const frequency_temp = lerp(frequency, note.frequency + pitch_bend_amount, 0.2)
-							frequency = frequency_temp
-							play_oscillator(frequency)
+						note_start_time = ~~millis() // prevent vibrato while doing pitch bend
+						if(bend_started){
+							const Y_move = mouseY - starting_y
+							const bend_up = Y_move < 0
+							const pitch_bend_factor = Y_move / this.note_height * 3
+
+							pitch_bend_amount = min(abs(pitch_bend_factor), 1) * (bend_up? note.freq_bend_above : note.freq_bend_below)
+							frequency = note.frequency + pitch_bend_amount
+							play_oscillator(note, frequency)
 							redraw_waveform = true
+
+							if(main_output_channel){
+								midi_pitch_bend = -constrain(pitch_bend_factor, -1, 1)
+								main_output_channel.sendPitchBend(midi_pitch_bend)
+							}
 						}
+						else {
+							if(abs(mouseY - starting_y) > this.bend_threshold){
+								starting_y = mouseY
+								bend_started = true
+							}
+						} 
 					}
 				}
 			} else if (pressed_note == null && note.contains_above(mouseX, mouseY)) { // 
@@ -463,7 +494,7 @@ class fingering_chart {
 				mode_shift_temp_index = note.index
 				if(note.note_val == 2) draggable = true
 				else draggable = false
-			} else note.isPressed = 0
+			} else note.is_pressed = 0
 		}
 	}
 	
@@ -749,7 +780,7 @@ class fingering_chart {
 		}
 		this.time = millis() * 0.001
 		if (this.playing_scale == false) {
-			if (playing_note) playing_note.mouseReleased()
+			if (playing_note) playing_note.release()
 			this.playing_scale = true
 			playing = true
 			this.started = false

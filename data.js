@@ -1,25 +1,73 @@
+// lowest: sets frequency of the first note of the chart, based on the number of semitones offset from A4,
+// which is where the standard tuning point is set
+// shift_amount: sets the note name of the first note of the chart, based on the semitones offset from C in the standard notation (e.g. notes_arr_C)
+// C0: -57, C1: -45, C2: -33, C3: -21, C4: -9, C5: 3, C6: 15, C7: 27, C8: 39 (highest note on 88 key piano, with the first being A0 at -48)
+// key: the default key for the instrument
+
 const recorder_instruments_arr = [
-	{name: "Sub-contrabass", lowest: -40, key: 'F1'}, // or double contrabass or octocontrabass
-	{name: "Sub-great bass", lowest: -33, key: 'C2'}, // or Contra great bass
-	{name: "Contrabass", lowest: -28, key: 'F2'}, // or Sub-bass
-	{name: "Great Bass", lowest: -21, key: 'C3'}, // aka Quart-bass
-	{name: "Bass", lowest: -16, key: 'F3'}, // aka Basset
-	{name: "Tenor", lowest: -9, key: 'C4'},
-	{name: "Alto", lowest: -4, key: 'F4'}, // or Treble
-	{name: "Soprano", lowest: 3, key: 'C5'},  // or Descant
-	{name: "Sopranino", lowest: 8, key: 'F5'},
-	{name: "Sopranissimo", lowest: 15, key: 'C6'} // or Garklein (German for "quite small") or Piccolo
+	{name: "Sub-contrabass", lowest: -40, key: 'F', shift_amount: 5, bass_instrument: true}, // or double contrabass or octocontrabass
+	{name: "Sub-great bass", lowest: -33, key: 'C', shift_amount: 0, bass_instrument: true}, // or Contra great bass
+	{name: "Contrabass", lowest: -28, key: 'F', shift_amount: 5, bass_instrument: true}, // or Sub-bass
+	{name: "Great Bass", lowest: -21, key: 'C', shift_amount: 0, bass_instrument: true}, // aka Quart-bass
+	{name: "Bass", lowest: -16, key: 'F', shift_amount: 5, bass_instrument: true}, // aka Basset
+	{name: "Tenor", lowest: -9, key: 'C', shift_amount: 0},
+	{name: "Alto", lowest: -4, key: 'F', shift_amount: 5}, // or Treble
+	{name: "Soprano", lowest: 3, key: 'C', shift_amount: 0},  // or Descant
+	{name: "Sopranino", lowest: 8, key: 'F', shift_amount: 5},
+	{name: "Sopranissimo", lowest: 15, key: 'C', shift_amount: 0} // or Garklein (German for "quite small") or Piccolo
 ]
+// shift amount determines which note the chart starts on, lowest determines the frequency, key the starting key and octave number
+// could lowest note determine the octave number? should these have a transposition of -12?
 
 const brass_instruments_arr = [
-	// {name: "Tuba", lowest: -40, key: 'F1'}, //
-	// {name: "Euphonium", lowest: -33, key: 'C2'}, //
-	// {name: "B♭ Trumpet", lowest: -28, key: 'B♭4'}, //
-	{name: "C Trumpet", lowest: -9, key: 'C4'}, //
+	{name: "Tuba", lowest: -39, shift_amount: 4, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: true}, // a.k.a. contrabass tuba
+	{name: "Euphonium", lowest: -26, shift_amount: 4, octave_offset: -1, wrap_point: 23, transposition: -2, bass_instrument: true}, // also bass trumpet
+	// {name: "Euphonium 4-NC", lowest: -25, shift_amount: 5, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: true}, // also bass trumpet
+	{name: "Baritone BC", lowest: -26, shift_amount: 4, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: true}, // bass clef sheet music
+	{name: "Baritone TC", lowest: -26, shift_amount: 4, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: false}, // tenor clef sheet music
+	{name: "B♭ Trumpet", lowest: -15, shift_amount: 6, octave_offset: -1, wrap_point: 22, transposition: -2}, // also cornet
+	{name: "C Trumpet", lowest: -15, shift_amount: 6, octave_offset: -1, wrap_point: 22, transposition: 0}, // also cornet
+]
+// accounting for transposition, so that for B♭ instrument, playing the same fingering for a C note on the staff makes the sound of B♭.
+
+const Irish_whistles_arr = [
+	{name: "A Whistle", lowest: 10, key: 'A', shift_amount: -3},
+	{name: "B♭ Whistle", lowest: 11, key: 'B♭', shift_amount: -2},
+	{name: "C Whistle", lowest: 12, key: 'C', shift_amount: 0},
+	{name: "D Whistle", lowest: 14, key: 'D', shift_amount: 2},
+	{name: "E♭ Whistle", lowest: 15, key: 'E♭', shift_amount: 3},
+	{name: "D Low Whistle", lowest: 2, key: 'D', shift_amount: 2},
+	{name: "E Low Whistle", lowest: 4, key: 'E', shift_amount: 4},
+	{name: "F Low Whistle", lowest: 5, key: 'F', shift_amount: 5},
+	{name: "G Low Whistle", lowest: 7, key: 'G', shift_amount: 7},
+]
+const tin_whistle_fingering_data = [ // diatonic scale
+	[1,1,1,1,1,1], // D5
+	[],
+	[1,1,1,1,1,0], // E
+	[],
+	[1,1,1,1,0,0], // F♯
+	[1,1,1,0,0,0], // G
+	[],
+	[1,1,0,0,0,0], // A
+	[],
+	[1,0,0,0,0,0], // B
+	[0,1,1,1,1,0], // C — special fingering. there are several possibilities, 
+	// and may be different for better pitch on different sizes or makes.
+	[0,0,0,0,0,0], // C♯
+	[0,1,1,1,1,1], // D6
+	[],
+	[1,1,1,1,1,0], // E
+	[],
+	[1,1,1,1,0,0], // F♯
+	[1,1,1,0,0,0], // G
+	[],
+	[1,1,0,0,0,0], // A
+	[],
+	[1,0,0,0,0,0], // B
 ]
 
-
-const recorder_fingerings = [
+const recorder_fingering_data = [
 [1,1,1,1,1,1,1,1], // C,      F
 [1,1,1,1,1,1,1,2], // C♯ D♭   F♯ G♭
 [1,1,1,1,1,1,1,0], // D,      G
@@ -50,54 +98,161 @@ const recorder_fingerings = [
 // also, larger instruments may require different fingerings
 	
 [2,1,0,0,1,1,0,0], // C,      F
-[2,1,2,1,1,0,1,1,1], // C♯ D♭   F♯ // Gb close bell
+[2,1,2,1,1,0,1,1,1], // C♯ D♭   F♯ Gb // close bell
 [2,1,0,1,1,0,1,2],  // D,      G // need to change for lower instruments
 [2,0,1,1,0,1,1,0]  // D♯ E♭,  G♯ A♭ // need to exclude for bass instruments
 ]
 
-const trumpet_fingerings = [
-// [1,1,1], // F♯ G♭ - extend 3rd valve slide
-// [1,0,1], // G - extend 3rd valve slide
-// [0,1,1], // G♯ A♭
-[1,1,0], // A
-[1,0,0], // A♯ B♭
-[0,1,0], // B
-[0,0,0], // C
-[1,1,1], // C♯ D♭ - extend 3rd valve slide
-[1,0,1], // D - extend 3rd valve slide
-[0,1,1], // D♯ E♭
-[1,1,0], // E
-[1,0,0], // F
+const bass_alt_fingering = [1,1,1,0,1,1,0,0]
 
-[0,1,0], // F♯ G♭
-[0,0,0], // G
+// note names are for C trumpet. Also Cornet.
+const trumpet_fingering_data = [
+[1,1,1], // F♯ G♭ - extend 3rd valve slide
+[1,0,1], // G3 - extend 3rd valve slide
 [0,1,1], // G♯ A♭
-[1,1,0], // A
+[1,1,0], // A3
 [1,0,0], // A♯ B♭
-[0,1,0], // B
-[0,0,0], // C
-[1,1,0], // C♯ D♭
-[1,0,0], // D
-[0,1,0], // D♯ E♭
-[0,0,0], // E
-[1,0,0], // F
+[0,1,0], // B3
+[0,0,0], // C4
+[1,1,1], // C♯ D♭ - extend 3rd valve slide
+[1,0,1], // D4 - extend 3rd valve slide
+[0,1,1], // D♯ E♭
+[1,1,0], // E4
+
+[1,0,0], // F4
 [0,1,0], // F♯ G♭
+[0,0,0], // G4
+[0,1,1], // G♯ A♭
+[1,1,0], // A4
+[1,0,0], // A♯ B♭
+[0,1,0], // B4
+[0,0,0], // C5
+[1,1,0], // C♯ D♭
+[1,0,0], // D5
+[0,1,0], // D♯ E♭
+[0,0,0], // E5
 
 // same as previous octave
-[0,0,0], // G
+[1,0,0], // F5
+[0,1,0], // F♯ G♭
+[0,0,0], // G5
 [0,1,1], // G♯ A♭
-[1,1,0], // A
+[1,1,0], // A5
 [1,0,0], // A♯ B♭
-[0,1,0], // B
-[0,0,0], // C
-// [1,1,0], // C♯ D♭
-// [1,0,0], // D
-// [0,1,0], // D♯ E♭
-// [0,0,0], // E
+[0,1,0], // B5
+[0,0,0], // C6
+[1,1,0], // C♯ D♭
+[1,0,0], // D6
+[0,1,0], // D♯ E♭
+[0,0,0], // E6
 ]
 
+// B♭ transposed instrument. Compensating, 4 valve. Same for Baritone.
+const euphonium_fingering_data = [
+[0,1,1,0], // E
+[1,0,1,0, 0,0,0,1], // F
+[0,1,1,0], // F♯ G♭
+[1,1,0,0, 0,0,1,0], // G
+[1,0,0,0], // G♯ A♭
+[0,1,0,0], // A
+[0,0,0,0], // A♯ B♭
+[1,1,1,1], // B
+[1,0,1,1], // C
+[0,1,1,1], // C♯ D♭
+[1,1,0,1], // D
+[1,0,0,1], // D♯ E♭
 
-const bass_alt_fingering = [1,1,1,0,1,1,0,0]
+[0,1,0,1], // E
+[1,0,1,0, 0,0,0,1], // F
+[0,1,1,0], // F♯ G♭
+[1,1,0,0], // G
+[1,0,0,0], // G♯ A♭
+[0,1,0,0], // A
+[0,0,0,0], // A♯ B♭
+[1,1,1,0, 0,1,0,1], // B
+[1,0,1,0, 0,0,0,1], // C
+[0,1,1,0], // C♯ D♭
+[1,1,0,0, 0,0,1,0], // D
+[1,0,0,0], // D♯ E♭
+
+[0,1,0,0], // E
+[0,0,0,0], // F
+[0,1,1,0], // F♯ G♭
+[1,1,0,0], // G
+[1,0,0,0], // G♯ A♭
+[0,1,0,0], // A
+[0,0,0,0, 0,1,1,0], // A♯ B♭
+[1,1,0,0, 0,0,1,0], // B
+[1,0,0,0, 0,0,0,1], // C
+[0,1,1,0], // C♯ D♭
+[1,1,0,0, 0,0,1,0], // D
+[1,0,0,0], // D♯ E♭
+]
+
+// B♭ transposed instrument. Compensating, 4 valve.
+const tuba_fingering_data = [
+[0,1,0,1], // E
+[0,0,0,1], // F
+[0,1,1,0], // F♯ G♭
+[1,1,0,0, 0,0,1,0], // G
+[1,0,0,0], // G♯ A♭
+[0,1,0,0], // A
+[0,0,0,0], // A♯ B♭
+[0,1,0,1, 1,1,1,0], // B
+[0,0,0,1, 1,0,1,0], // C
+[0,1,1,0], // C♯ D♭
+[1,1,0,0, 0,0,1,0], // D
+[1,0,0,0], // D♯ E♭
+
+[0,1,0,0], // E
+[0,0,0,0], // F
+[0,1,1,0], // F♯ G♭
+[1,1,0,0, 0,0,1,0], // G
+[1,0,0,0], // G♯ A♭
+[0,1,0,0], // A
+[0,0,0,0], // A♯ B♭
+[1,1,0,0, 0,0,1,0], // B
+[1,0,0,0], // C
+[0,1,0,0, 0,1,1,0], // C♯ D♭
+[0,0,0,0, 1,1,0,0], // D
+[1,0,0,0], // D♯ E♭
+
+[0,1,0,0], // E
+[0,0,0,0], // F
+[0,1,1,0], // F♯ G♭
+[1,1,0,0, 0,0,1,0], // G
+[1,0,0,0], // G♯ A♭
+[0,1,0,0], // A
+[0,0,0,0], // A♯ B♭
+]
+
+// const euphonium_nc_fingering_data = [
+// [0,1,1,0], // G
+// [1,1,0,0], // G♯ A♭
+// [1,0,0,0], // A
+// [0,1,0,0], // A♯ B♭
+// [0,0,0,0], // C
+// [], // N/A on non-compensated euphoniums
+// [1,1,1,1], // 
+// [1,0,1,1], // 
+// [0,1,1,1], // 
+// [1,1,0,1], // 
+
+// [0,1,0,1], // 
+// [0,1,0], // 
+// [0,0,0], // 
+// [0,1,1], // 
+// [1,1,0], // 
+// [1,0,0], // 
+// [0,1,0], // 
+// [0,0,0], // 
+// [1,1,0], // 
+// [1,0,0], // 
+// [0,1,0], // 
+// [0,0,0], // 
+
+// // same as previous octave
+// ]
 
 const notes_arr_C = [
 	"C",             
@@ -114,26 +269,61 @@ const notes_arr_C = [
 	"B"
 ]
 
-function C_to_F(array_C){
-	return [...array_C.slice(5).concat(array_C.slice(0,5))]
+// to create a note array that starts at F, use notes_arr = shift_array(5)
+function shift_array(amount = 0){
+	if(amount) return [...notes_arr_C.slice(amount).concat(notes_arr_C.slice(0,amount))]
+	return notes_arr_C
 }
 
-const notes_arr_F = C_to_F(notes_arr_C)
+const order_of_flats =  'BEADGCF'
+const order_of_sharps = 'FCGDAEB'
 
-const major_key_signatures_C = [
-	["C",0],     // C • D • E • F • G • A • B
-	["D♭",5],    // D♭• E♭• F • G♭• A♭• B♭• C
-	["D",2],     // D • E • F♯• G • A • B • C♯
-	["E♭",3], 	 // E♭• F • G • A♭• B♭• C • D
-	["E",4],     // E • F♯• G♯• A • B • C♯• D♯
-	["F",1],     //	F • G • A • B♭ • C • D • E
-	["F♯/G♭",6], // F♯• G♯• A♯• B • C♯• D♯• E♯ 
-	["G",1],     // G • A • B • C • D • E • F♯
-	["A♭",4],    // A♭• B♭• C • D♭• E♭• F • G
-	["A",3],     // A • B • C♯• D • E • F♯• G♯
-	["B♭",2],    // B♭ • C • D • E♭ • F • G • A
-	["B",5]      // B • C♯• D♯• E • F♯• G♯• A♯
-]
+// Map each note to its chromatic index
+const note_to_index = {
+  "C": 0,
+  "C♯": 1, "D♭": 1,
+  "D": 2,
+  "D♯": 3, "E♭": 3,
+  "E": 4,
+  "F": 5,
+  "F♯": 6, "G♭": 6,
+  "G": 7,
+  "G♯": 8, "A♭": 8,
+  "A": 9,
+  "A♯": 10, "B♭": 10,
+  "B": 11
+};
+
+// Map index back to notes (sharp and flat versions)
+const index_to_note = [
+  { natural: "C" },
+  { sharp: "C♯", flat: "D♭" },
+  { natural: "D" },
+  { sharp: "D♯", flat: "E♭" },
+  { natural: "E" },
+  { natural: "F" },
+  { sharp: "F♯", flat: "G♭" },
+  { natural: "G" },
+  { sharp: "G♯", flat: "A♭" },
+  { natural: "A" },
+  { sharp: "A♯", flat: "B♭" },
+  { natural: "B" }
+];
+
+// const major_key_signatures_C = [
+// 	["C",0],     // C • D • E • F • G • A • B
+// 	["D♭",5],    // D♭• E♭• F • G♭• A♭• B♭• C
+// 	["D",2],     // D • E • F♯• G • A • B • C♯
+// 	["E♭",3], 	 // E♭• F • G • A♭• B♭• C • D
+// 	["E",4],     // E • F♯• G♯• A • B • C♯• D♯
+// 	["F",1],     //	F • G • A • B♭ • C • D • E
+// 	["F♯/G♭",6], // F♯• G♯• A♯• B • C♯• D♯• E♯ 
+// 	["G",1],     // G • A • B • C • D • E • F♯
+// 	["A♭",4],    // A♭• B♭• C • D♭• E♭• F • G
+// 	["A",3],     // A • B • C♯• D • E • F♯• G♯
+// 	["B♭",2],    // B♭ • C • D • E♭ • F • G • A
+// 	["B",5]      // B • C♯• D♯• E • F♯• G♯• A♯
+// ]
 
 // const major_accidental_counts_list_C = [0, 5, 2, 3, 4, 1,
 // 																         6, 1, 4, 3, 2, 5]
@@ -141,57 +331,8 @@ const major_key_signatures_C = [
 // const minor_accidental_counts_list_C = [3, 4, 1, 6, 1, 4,
 // 																         3, 2, 5, 0, 5, 2]
 
-const order_of_flats_full =  ['B', 'E','A', 'D', 'G', 'C', 'F', 'B♭', 'E♭', 'A♭', 'D♭', 'G♭']
-const order_of_sharps_full = ['F', 'C', 'G', 'D', 'A', 'E', 'B', 'F♯', 'C♯', 'G♯', 'D♯', 'A♯']
-
-const order_of_flats =  'BEADGCF'
-const order_of_sharps = 'FCGDAEB'
-
-// const major_accidental_list_C = [
-// 	'natural', 'flat', 'sharp', 'flat', 'sharp', 'flat',
-// 	'either',	 'sharp','flat',  'sharp','flat',  'sharp'
-// ]
-
-const minor_key_signatures_C = [
-	["c",3], ["c♯",4], ["d",1],  ["d♯/e♭",6], ["e",1],  ["f",4],
-	["f♯",3],["g",2],  ["g♯",5], ["a",0],     ["b♭",5], ["b",2]
-]
-
-// const minor_accidental_list_C = [
-// 	'flat', 'sharp','flat', 'either', 'sharp','flat',
-// 	'sharp','flat', 'sharp','natural','flat', 'sharp'
-// ]
-
-const major_key_signatures_F = C_to_F(major_key_signatures_C)
-const minor_key_signatures_F = C_to_F(minor_key_signatures_C)
-
-// const major_accidental_counts_list_F = C_to_F(major_accidental_counts_list_C)
-// const minor_accidental_counts_list_F = C_to_F(minor_accidental_counts_list_C)
-
-// const major_accidental_list_F = C_to_F(major_accidental_list_C)
-// const minor_accidental_list_F = C_to_F(minor_accidental_list_C)
-
-// const derived_scale_mapping = [
-// [['Major',0],['Palinese Pelog',4],['Major Hexatonic',0],['Bebop Major',0]],
-// [['Major',1],['Balinese Pelog',1],['Kokin-joshi',4]],
-// [['Major',2],['Kokin-joshi',0,]],
-// [['Major',3],['Hon-kumoi-joshi',1]],
-// [['Major',4],['Mixolydian Pentatonic',0]],
-// [['Major',5],['Hon-kumoi-joshi',2]],
-// [['Major',6],['Kokin-joshi',3]]
-// ]
-/*
--need to figure out a way to generate this list programatically when the scale family toggle is activated.
-then the prev, next would move within this list? or just use the scale up and down?
--would need to compare each mode of a scale with every other scale's modes (except the chromatic scale), 
-unless the set to compare can be pruned first. Any other scales that won't match up with others?
-What would be the criteria? One of the scales is a subset of the other, 
-meaning the one with the fewer notes has all of its notes contained in the larger one.
-Could also have where one note is different from the other. 
-Would need to exclude comparisons of modes within each scale.
-Maybe just run it for the currently selected scale when the button is pressed.
-have an "alternate history" list that would be gone through when button is active, and alternate_history is true.
-*/
+// const order_of_flats_full =  ['B', 'E','A', 'D', 'G', 'C', 'F', 'B♭', 'E♭', 'A♭', 'D♭', 'G♭']
+// const order_of_sharps_full = ['F', 'C', 'G', 'D', 'A', 'E', 'B', 'F♯', 'C♯', 'G♯', 'D♯', 'A♯']
 
 // note: if adding a new scale, the numbers must add up to the note count so that it starts at the same note on each octave
 const scales_arr = [

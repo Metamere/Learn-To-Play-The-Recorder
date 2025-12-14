@@ -303,14 +303,33 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 	I probably should have structured things that way from the start, 
 	and just made the displayed notes into a subset of the full notes array.
 
+12-10-25
+	- added brass instruments, Irish whistles, and a way to switch between them.
+	- refined some features, fixed various bugs, probably introduced new ones
+12-12-25
+	- added midi output. If there is at least one midi device connected, it will create a button in the misc. menu in the lower left.
+	Clicking that button will show all midi device options. If one is selected, then the midi commands will be output that 
+	correspond with the regular internal sound controls. All notes will play back on channel one, 
+	except for the drone which will be on channel two. 
+12-14-25
+	- split the tempo slider into a base tempo and a tempo multiplier (0.25, 0.5, 1, 2, 3, 4). 
+	To make practicing at a series of increasing tempos a bit easier.
+
 To-do:
-- allow for toggling between sharps/flats/both for scales where the counts are the same,
-or where there are duplicate letters.
+- prevent midi note re-trigger when moving to a new note if the pitch has been bent such that it is very close to the new note.
+- hold_fing instrument toggle doesn't work properly for brass instruments. Maybe note applicable in the same way.
+- fix issues with save_chart.
+	- extra note on some condensed charts for Irish whistle 
+  - allow irish whistle charts to only show the ones with complete sets of playable notes.
+- generate sheet music display for the scale patterns. Would need to allow for scrolling since it would need
+to maintain the same scale. click staff to toggle between single note display, sequence display, and off.
+- preserve previous instruments when switching instrument types.
+- complete the brass instrument fingering data (non-compensating tuba & euph, bass tuba?)
+- make toggle for default_sharp work for any scale, to allow for toggling between sharps/flats/both for scales
+where the counts are the same, or where there are duplicate letters.
 - add a note length selection? whole, half, quarter, eigth, sixteenth? Then won't need so big of a tempo range?
 - allow indicator dot in pattern representation to be turned off, and store that preference?
 - add a practice mode where it cycles through keys, sequences, modes, etc. automatically
-- need to set up notation for all scales such that both flat and sharp notes can both be added where necessary
-And fix existing rules so that scales like Major Hexatonic V (mixolydian) key sigs display correctly
-- generate sheet music display for the scale patterns, even the shuffled ones.
 - Add ability to toggle alternate fingerings, for faster passages where proper pitch isn't as important as speed,
-or for individual instrument nuances or oddities (e.g. bass recorder often has some differences in fingering)
+or for individual instrument nuances or oddities (e.g. bass recorder often has some differences in fingering, and
+Irish whistles might use different fingering for the special note)

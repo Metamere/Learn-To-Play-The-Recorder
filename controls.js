@@ -22,6 +22,7 @@ let reverse_mode_switched = false
 let img_w, img_h, img_y
 let drone_button_longpress_timer = null
 let drone_button_longpressed = false
+let MIDI_OUTPUT_button = false
 
 function create_controls(initial=true){
 	inst_x = 2 * U
@@ -29,7 +30,7 @@ function create_controls(initial=true){
 	mode_x = chart_x + 15 * U + inst_x
 	control_y = 0
 	
-	const button_h = 1.65 * U
+	const button_h = int(1.65 * U)
 	const button_w = min(4 * U, W - chart_x2)
 	const scl = int(U * 0.5)
 	const scl_L = int(U * 0.7)
@@ -59,16 +60,8 @@ function create_controls(initial=true){
 		mode_select.style("font-size", font_size)
 	}
 
-	// sequence_select = createSelect()
-	// if (note_count >= 12) 
-	
-	// instrument_index = instruments_arr.findIndex(object => {return object.name === instrument_name})
-	// starting_note = instruments_arr[instrument_index].key
-	// if(instrument_obj.key[0] == 'F') notes_arr = notes_arr_F
-	// else notes_arr = notes_arr_C
-
-	img_h = int(15.8 * U)
-	img_w = int(img.width / img.height * img_h)
+	img_w = U * 1.45
+	img_h = int(img.height / img.width * img_w)
 	img_y = int(chart_y - 5.25 * U)
 	image(img, 0, img_y, img_w, img_h)
 	
@@ -79,34 +72,43 @@ function create_controls(initial=true){
 	}
 	TEMPO_button.size(button_w, button_h)
 	TEMPO_button.position(chart_x2, 0)
-  TEMPO_button.style("font-size", min(button_h, int(U * (0.6 + 0.27 * mobile))) + "px") // int(U*0.65)
+  TEMPO_button.style("font-size", min(button_h, int(U * (0.6 + 0.27 * mobile))) + "px")
 	
 	if(initial){
-		TEMPO_slider = createSlider(10, 600, tempo, 1)
-		TEMPO_slider.input(update_tempo)
+		TEMPO_slider = createSlider(20, 200, base_tempo, 1)
+		TEMPO_slider.input(function() {update_tempo(false)})
 		TEMPO_slider.hide()
 		TEMPO_slider.addClass("slider")
+		let val
+		if(tempo_multiplier < 1) val = 4 * tempo_multiplier
+		else val = tempo_multiplier + 2 
+		TEMPO_multiplier_slider = createSlider(1, 6, val, 1)
+		TEMPO_multiplier_slider.input(function() {update_tempo(true)})
+		TEMPO_multiplier_slider.hide()
+		TEMPO_multiplier_slider.addClass("slider")
 	} 
-	TEMPO_slider.position(5 * U + inst_x, control_y + 0.75 * U)
-	TEMPO_slider.size(U * 22)
+	TEMPO_slider.position(2 * U, control_y + U)
+	TEMPO_slider.size(U * 27)
+	TEMPO_multiplier_slider.position(17.5 * U, control_y + 3.5 * U)
+	TEMPO_multiplier_slider.size(U * 10)
+	
+	if(initial){
+		HIDE_FING_button = createButton('⬤ ⬤ ⬤')
+		HIDE_FING_button.id('HIDE')
+		HIDE_FING_button.mousePressed(hide_fingerings)
+	} 
+	HIDE_FING_button.style("font-size", scl2 * (0.85 + 0.35 * mobile) + "px")
+	HIDE_FING_button.size(button_w, button_h)
+	HIDE_FING_button.position(chart_x2, chart_hy - 2 * button_h)
 	
 	if(initial){
 		COND_button = createButton('⁞⁞⁞⁞⁞⁞')
 		COND_button.id('COND')
-		COND_button.mousePressed(condense_notes)
+		COND_button.mousePressed(condensed_notes_toggle)
 	} 
-	COND_button.style("font-size", int(U * (0.7 + 0.1 * mobile)) + "px")
+	COND_button.style("font-size", int(U * (0.75 + 0.6 * mobile)) + "px")
 	COND_button.size(button_w, button_h)
 	COND_button.position(chart_x2, chart_hy - button_h)
-
-	if(initial){
-		HIDE_FING_button = createButton('HIDE ◑|◉|◒')
-		HIDE_FING_button.id('HIDE')
-		HIDE_FING_button.mousePressed(hide_fingerings)
-	} 
-	HIDE_FING_button.style("font-size", scl2 * 0.85 + "px")
-	HIDE_FING_button.size(button_w, button_h)
-	HIDE_FING_button.position(chart_x2, chart_hy - 2 * button_h)
 	
 	const button_w2 = U * 2.62
 	const button_w2b = button_w2 * 0.9
@@ -119,7 +121,7 @@ function create_controls(initial=true){
 
 	if(initial){
 		MISC_MENU_button = createButton('MISC. MENU')
-		MISC_MENU_button.mousePressed(MISC_MENU_buttons)
+		MISC_MENU_button.mousePressed(MISC_MENU_buttons_toggle)
 	} 
 	MISC_MENU_button.style("font-size", scl + "px")
 	MISC_MENU_button.size(1.5 * U, U * 2.775)
@@ -132,11 +134,11 @@ function create_controls(initial=true){
 		SAVE_CHART_button.mouseReleased(save_confirm)
 		SAVE_CHART_button.id('SAVE_CHART')
 		SAVE_CHART_button.hide()
-		if(note_count != 12) SAVE_CHART_button.style("backgroundColor", "rgb(140,140,140)")
+		if(note_count != 12) SAVE_CHART_button.style('backgroundColor', 'rgb(140,140,140)')
 	} 
 	SAVE_CHART_button.style("font-size", scl_L + "px")
-	SAVE_CHART_button.size(button_w2, button_h2 + U * 0.15)
-	SAVE_CHART_button.position(last_col_x, row3 - U * 0.15)
+	SAVE_CHART_button.size(button_w2, button_h2 + U * 0.25)
+	SAVE_CHART_button.position(last_col_x, row3 - U * 0.25)
 	
 	if(initial){
 		SAVE_CHART_CANCEL_button = createButton('CANCEL')
@@ -174,8 +176,8 @@ function create_controls(initial=true){
 		DRONE_VOL_slider.addClass("slider")
 		DRONE_VOL_slider.hide()
 	} 
-	DRONE_VOL_slider.position(U*16.5, U*4.5 - button_h2)
-	DRONE_VOL_slider.size(U*12)
+	DRONE_VOL_slider.position(U * 16.5, U * 4.5 - button_h2)
+	DRONE_VOL_slider.size(U * 12)
 		
 	if(initial){
 		VOL_button = createButton('VOL ' + round(default_vol * 100))
@@ -183,8 +185,8 @@ function create_controls(initial=true){
 		VOL_button.id('VOL')
 		VOL_button.hide()
 	} 
-	VOL_button.style("font-size", int(U*0.67) + "px")
-	VOL_button.size(button_w2 + U*0.15, button_h2)
+	VOL_button.style("font-size", int(U * 0.67) + "px")
+	VOL_button.size(button_w2 + U * 0.15, button_h2)
 	VOL_button.position(last_col_x, row1)
 	
 	if(initial){
@@ -200,9 +202,9 @@ function create_controls(initial=true){
 
 	if(initial){
 		HOLD_KEY_button = createButton('HOLD KEY')
-		HOLD_KEY_button.mousePressed(TOGL_instrument)   
+		HOLD_KEY_button.mousePressed(function() {TOGL_instrument(false)})
 		HOLD_KEY_button.hide()
-		if(note_count != 12) HOLD_KEY_button.style("backgroundColor", "rgb(140,140,140)")
+		if(note_count != 12) HOLD_KEY_button.style('backgroundColor', 'rgb(140,140,140)')
 	} 
 	HOLD_KEY_button.style("font-size", scl_L + "px")
 	HOLD_KEY_button.size(button_w2b, button_h2)
@@ -210,13 +212,18 @@ function create_controls(initial=true){
 	
 	if(initial){
 		HOLD_FING_button = createButton('HOLD FING.')
-		HOLD_FING_button.mousePressed(TOGL_instrument2)
+		HOLD_FING_button.mousePressed(function() {TOGL_instrument(true)})
 		HOLD_FING_button.hide()
-	if(note_count != 12) HOLD_FING_button.style("backgroundColor", "rgb(140,140,140)")
+	if(note_count != 12) HOLD_FING_button.style('backgroundColor', 'rgb(140,140,140)')
 	} 
 	HOLD_FING_button.style("font-size", scl_L + "px")
 	HOLD_FING_button.size(button_w2b, button_h2)
 	HOLD_FING_button.position(last_col_x, row1)
+
+	if(instrument_type == 'recorder'){
+		HOLD_FING_button.style('backgroundColor', 'rgb(240,240,240)')
+	}
+	else HOLD_FING_button.style('backgroundColor', 'rgb(140,140,140)')
 
 	if(initial){
 		UP_button = createButton('▲')
@@ -233,7 +240,6 @@ function create_controls(initial=true){
 		SELECT_MENU_button.mousePressed(function() {change_select_menu()})
 		SELECT_MENU_button.id('SELECT_MENU')
 		SELECT_MENU_button.hide()
-
 	} 
 	
 	SELECT_MENU_button.style("font-size", scl_L * 1.4 + "px")
@@ -254,30 +260,58 @@ function create_controls(initial=true){
 		MODE_INC_button.mousePressed(function() {cycle_mode(1)})
 		MODE_INC_button.id('MODE_INC')	
 		MODE_INC_button.hide()
-	}
-	MODE_INC_button.style("font-size", button_hs + "px")
-	MODE_INC_button.size(button_w2 * 0.725, button_h2)
-	MODE_INC_button.position(button_w2 * 0.725, row1)
-
-	if(initial){
 		MODE_DEC_button = createButton('◀')
 		MODE_DEC_button.mousePressed(function() {cycle_mode(-1)})
 		MODE_DEC_button.id('MODE_DEC')
 		MODE_DEC_button.hide()	
-	} 
-	MODE_DEC_button.style("font-size", button_hs + "px")
-	MODE_DEC_button.size(button_w2 * 0.725, button_h2)
-	MODE_DEC_button.position(0, row1)
-	
-	if(initial){
 		MODE_MODE_button = createButton('RELATIVE ◀ MODE ▶')
 		MODE_MODE_button.mousePressed(mode_mode_switch)
 		MODE_MODE_button.id('MODE_MODE')
 		MODE_MODE_button.hide()
-	} 
+	}
+	MODE_INC_button.style("font-size", button_hs + "px")
+	MODE_INC_button.size(button_w2 * 0.725, button_h2)
+	MODE_INC_button.position(button_w2 * 0.725, row1)
+	MODE_DEC_button.style("font-size", button_hs + "px")
+	MODE_DEC_button.size(button_w2 * 0.725, button_h2)
+	MODE_DEC_button.position(0, row1)
 	MODE_MODE_button.style("font-size", scl_L + "px")
 	MODE_MODE_button.size(button_w2 * 1.45, button_h2)
 	MODE_MODE_button.position(0, row2)
+
+	if(initial){
+		TYPE_MENU_button = createButton('TYPE')
+		TYPE_MENU_button.id('TYPE')
+		TYPE_MENU_button.hide()
+		TYPE_MENU_button.mousePressed(instrument_type_menu_toggle)
+		RECORDER_TYPE_button = createButton('RECORDER')
+		RECORDER_TYPE_button.id('RECORDER')
+		RECORDER_TYPE_button.hide()
+		RECORDER_TYPE_button.mousePressed(function() {instrument_type_switch('recorder', false)})
+		BRASS_TYPE_button = createButton('BRASS')
+		BRASS_TYPE_button.id('BRASS')
+		BRASS_TYPE_button.hide()
+		BRASS_TYPE_button.mousePressed(function() {instrument_type_switch('brass', false)})
+		Irish_whistle_TYPE_button = createButton('IRISH WHISTLE')
+		Irish_whistle_TYPE_button.id('IRISH_WHISTLE')
+		Irish_whistle_TYPE_button.hide()
+		Irish_whistle_TYPE_button.mousePressed(function() {instrument_type_switch('Irish whistle', false)})
+	}
+	const scl_L2 = scl_L * 1.5
+	TYPE_MENU_button.style("font-size", scl_L2 + "px")
+	TYPE_MENU_button.style('transform', 'rotate(270deg)')
+	TYPE_MENU_button.size(U * 3, 1.45 * U)
+	TYPE_MENU_button.position(-U * 0.75, row1 + U * 2.58)
+	
+	RECORDER_TYPE_button.style("font-size", scl_L2 + "px")
+	RECORDER_TYPE_button.size(U * 10, button_h)
+	RECORDER_TYPE_button.position(U * 1.5, int(row1 + button_h2))
+	BRASS_TYPE_button.style("font-size", scl_L2 + "px")
+	BRASS_TYPE_button.size(U * 10, button_h)
+	BRASS_TYPE_button.position(U * 1.5, int(row1 + button_h2 + button_h))
+	Irish_whistle_TYPE_button.style("font-size", scl_L2 + "px")
+	Irish_whistle_TYPE_button.size(U * 10, button_h)
+	Irish_whistle_TYPE_button.position(U * 1.5, int(row1 + button_h2 + button_h * 2))
 	
 	if(initial){
 		PREV_SCALE_button = createButton('PREV. SCL.')
@@ -343,7 +377,7 @@ function create_controls(initial=true){
 		// long-press (1s) opens misc menu and shows drone & master volume sliders
 		DRONE_button.mousePressed(function(){
 			// if(drone_button_longpressed){
-			// 	if(misc_buttons_shown) MISC_MENU_buttons()
+			// 	if(misc_buttons_shown) MISC_MENU_buttons_toggle()
 			// 	// toggle_drone()
 			// 	drone_button_longpressed = false
 			// 	return
@@ -357,10 +391,10 @@ function create_controls(initial=true){
 					toggle_drone()
 				}
 				if(misc_buttons_shown){
-					MISC_MENU_buttons()
+					MISC_MENU_buttons_toggle()
 				} 
 				else {
-					if(!misc_buttons_shown) MISC_MENU_buttons()
+					if(!misc_buttons_shown) MISC_MENU_buttons_toggle()
 					if(!drone_vol_slider_shown) toggle_drone_vol_slider()
 					if(!vol_slider_shown) toggle_vol_slider()
 				}
@@ -449,7 +483,7 @@ function create_controls(initial=true){
 		LOOP_button.id('BOTH')
 		LOOP_button.hide()
 	} 
-	const scl_L2 = scl_L * 1.5
+
 	REVERSE_button.style("font-size", scl_L2 + "px")
 	REVERSE_button.size(button_hs, button_hs)
 	REVERSE_button.position(U * 1.75, U * 2.85)
@@ -466,7 +500,7 @@ function create_controls(initial=true){
 	LOOP_button.size(button_hs, button_hs)
 	LOOP_button.position(U * 7, U * 2.85)
 	
-
+	if(MIDI_OUTPUT_button) midi_output_button_style_update()
 	// if(initial) notes_count_input = createInput(str(note_count))
 	// notes_count_input.style("font-size", int(U*0.65) + "px")
 	// notes_count_input.size(button_w*0.75, button_h/2)
@@ -514,10 +548,35 @@ function mode_mode_switch(){
 	stored_mode_mode = mode_mode
 }
 
-function MISC_MENU_buttons(){
+function midi_output_button_style_update(){
+	MIDI_OUTPUT_button.style("font-size", U + "px")
+	MIDI_OUTPUT_button.style('transform', 'rotate(270deg)')
+	MIDI_OUTPUT_button.size(U * 6, 1.45 * U)
+	MIDI_OUTPUT_button.position(-U * 2.25, U * 12.25)
+}
+
+function MISC_MENU_buttons_toggle(){
 	misc_buttons_shown = !misc_buttons_shown
 	if(misc_buttons_shown){
+		if(!MIDI_OUTPUT_button && midi_output_device_count){
+			MIDI_OUTPUT_button = createButton(midi_output_device_count + ' MIDI OUT')
+			TYPE_MENU_button.id('MIDI')
+			MIDI_OUTPUT_button.hide()
+			MIDI_OUTPUT_button.mousePressed(midi_output_selection_menu_toggle)
+			midi_output_button_style_update()
+		}
 		// PLACEHOLDER_button.show()
+		if(previous_instrument_name){
+			HOLD_KEY_button.style('backgroundColor', 'rgb(240,240,240)')
+			if(instrument_type == 'recorder'){
+				HOLD_FING_button.style('backgroundColor', 'rgb(240,240,240)')
+			}
+			else HOLD_FING_button.style('backgroundColor', 'rgb(140,140,140)')
+		}
+		else{
+			HOLD_FING_button.style('backgroundColor', 'rgb(140,140,140)')
+			HOLD_KEY_button.style('backgroundColor', 'rgb(140,140,140)')
+		} 
 		HOLD_KEY_button.show()
 		HOLD_FING_button.show()
 		DRONE_VOL_button.show()
@@ -529,13 +588,14 @@ function MISC_MENU_buttons(){
 		if(sequence_slider_shown) toggle_sequence_slider()
 		MODE_MODE_button.show()
 		MODE_INC_button.show()
-		MODE_DEC_button.show()	
+		MODE_DEC_button.show()
+		TYPE_MENU_button.show()
+		if(MIDI_OUTPUT_button) MIDI_OUTPUT_button.show()
 		TUNING_button.show()
 		PREV_SCALE_button.show()
 		NEXT_SCALE_button.show()
 		MISC_MENU_button.style('backgroundColor', 'rgb(255,200,95)')
 		MISC_MENU_button.size(1.57*U, 1.5*U*2.4)
-		
 	}
 	else{
 		HOLD_KEY_button.hide()
@@ -553,17 +613,168 @@ function MISC_MENU_buttons(){
 		MODE_MODE_button.hide()
 		MODE_INC_button.hide()
 		MODE_DEC_button.hide()
+		TYPE_MENU_button.hide()
+		if(MIDI_OUTPUT_button) MIDI_OUTPUT_button.hide()
 		PREV_SCALE_button.hide()
 		NEXT_SCALE_button.hide()
 		if(drone_vol_slider_shown) toggle_drone_vol_slider()
 		if(vol_slider_shown) toggle_vol_slider()
 		if(tuning_slider_shown) toggle_tuning_slider() // TUNING_slider.hide()
+		if(instrument_types_shown) instrument_type_menu_toggle()
 		TUNING_button.hide()	
 		MISC_MENU_button.style('backgroundColor', 'rgb(240,240,240)')
 		MISC_MENU_button.size(1.5*U, 1.5*U*1.85)
+		if(midi_output_buttons.length){
+			for(button of midi_output_buttons) button.hide()
+			midi_outputs_shown = false
+		} 
 	}
 }
 
+let instrument_types_shown
+function instrument_type_menu_toggle(){
+	instrument_types_shown = !instrument_types_shown
+	if(instrument_types_shown){
+		RECORDER_TYPE_button.show()
+		BRASS_TYPE_button.show()
+		Irish_whistle_TYPE_button.show()
+	}
+	else{
+		RECORDER_TYPE_button.hide()
+		BRASS_TYPE_button.hide()
+		Irish_whistle_TYPE_button.hide()
+	}
+}
+
+let midi_outputs_shown
+let midi_output_buttons = []
+let midi_output_device_index = null
+function midi_output_selection_menu_toggle(){
+	if(!midi_output_device_count) return
+	if(midi_output_buttons.length == 0){
+		const button_width = U * 14
+		const button_height = U * 1.5
+		const y0 = chart_y + chart_h
+		const font_str = int(U * 0.85) + 'px'
+		let previous_device_name = ''
+		for(let i = 0; i < midi_output_device_count; i++){
+				let list_item = midi_device_list[i]
+				let device_name = list_item.name
+				if(device_name == previous_device_name) continue
+				previous_device_name = device_name
+				let button = createButton(device_name)
+					.size(button_width, button_height)
+					.position(U * 1.5 + button_width * int(i / 4), y0 - button_height * (1 + i % 4))
+					.style("font-size", font_str)
+					.id('MIDI_' + i)
+					.mousePressed(function() {
+						if(midi_output_device && this.elt.id == 'MIDI_' + midi_output_device_index){
+							for(let i = 0; i < 128; i++){
+								midi_output_device.sendNoteOff(i, {channels: [1,2]})
+							}
+							midi_output_device = null
+							midi_output_device_index = null
+							main_output_channel = 0
+							drone_output_channel = 0
+							midi_output_enabled = false
+							// console.log('midi output disconnected from: ' + device_name)
+						}
+						else{
+							midi_output_device = WebMidi.outputs[midi_device_list[i].original_index]
+							main_output_channel = midi_output_device.channels[1]
+							main_output_channel.sendPitchBendRange(2, 0)
+							drone_output_channel = midi_output_device.channels[2]
+							midi_output_enabled = true
+							midi_output_device_index = i
+							// console.log('midi output connected to: ' + device_name)
+						}
+						update_midi_output_button_colors(i)
+					})
+				midi_output_buttons.push(button)
+		}
+	}
+	midi_outputs_shown = !midi_outputs_shown
+	if(midi_outputs_shown){
+		for(button of midi_output_buttons) button.show()
+	}
+	else{
+		for(button of midi_output_buttons) button.hide()
+	}
+}
+
+function update_midi_output_button_colors(index){
+	let idx = 0
+	for(button of midi_output_buttons){
+		if(midi_output_enabled && idx == index) button.style('backgroundColor', 'rgb(255,200,95)')
+		else button.style('backgroundColor', 'rgb(240,240,240)')
+		idx++
+	}
+}
+
+function instrument_type_switch(instrument_type_input, initial = true){
+	if(!initial && instrument_type_input == instrument_type) return
+	instrument_type = instrument_type_input
+	if(instrument_type == 'recorder'){
+		instruments_arr = recorder_instruments_arr
+		fingering_data = recorder_fingering_data
+		default_instrument_name = default_recorder_name
+		default_previous_instrument_name = default_previous_recorder_name
+		instrument_name = lookup_item("recorder_name", default_instrument_name)
+		previous_instrument_name = lookup_item("previous_recorder_name", default_previous_instrument_name)
+		symbol_count = 8
+		img = recorder_img
+	}
+	else if(instrument_type == 'brass'){
+		instruments_arr = brass_instruments_arr
+		default_instrument_name = default_brass_instrument_name
+		default_previous_instrument_name = default_previous_brass_instrument_name
+		instrument_name = lookup_item("brass_instrument_name", default_instrument_name)
+		previous_instrument_name = lookup_item("previous_brass_instrument_name", default_previous_instrument_name)
+		if(initial){
+			if(instrument_name.includes('Euphonium')) fingering_data = euphonium_fingering_data
+			else if(instrument_name.includes('Tuba')) fingering_data = tuba_fingering_data
+			else fingering_data = trumpet_fingering_data
+			symbol_count = fingering_data[0].length
+		}
+		img = brass_instrument_img
+	}
+	else if(instrument_type == 'Irish whistle'){
+		instruments_arr = Irish_whistles_arr
+		default_instrument_name = default_Irish_whistle_name
+		default_previous_instrument_name = default_previous_Irish_whistle_name
+		instrument_name = lookup_item("Irish_whistle_name", default_instrument_name)
+		previous_instrument_name = lookup_item("previous_Irish_whistle_name", default_previous_instrument_name)
+		fingering_data = tin_whistle_fingering_data
+		symbol_count = 6
+		img = Irish_whistle_img
+	}
+	else return false
+	storeItem("instrument_type", instrument_type)
+	if(!initial){
+		instrument_select.remove()
+		instrument_select = createSelect()
+		create_dropdown(inst_x, control_y, instruments_arr, instrument_select, instrument_name, update_instrument, "instrument_select")
+		update_instrument()
+
+		img_w = U * 1.45
+		img_h = int(img.height / img.width * img_w)
+		img_y = int(chart_y - 5.25 * U)
+		fill(255)
+		rect(0,img_y,img_w, H)
+		image(img, 0, img_y, img_w, img_h)
+		if(previous_instrument_name){
+			HOLD_KEY_button.style('backgroundColor', 'rgb(240,240,240)')
+			if(instrument_type == 'recorder'){
+				HOLD_FING_button.style('backgroundColor', 'rgb(240,240,240)')
+			}
+			else HOLD_FING_button.style('backgroundColor', 'rgb(140,140,140)')
+		}
+		else{
+			HOLD_FING_button.style('backgroundColor', 'rgb(140,140,140)')
+			HOLD_KEY_button.style('backgroundColor', 'rgb(140,140,140)')
+		}
+	}
+}
 
 function save_confirm(){
 	if(note_count != 12) return
@@ -670,7 +881,7 @@ function toggle_loop_mode(){
 // 		notes_count_input.value(str(note_count))
 // 		if(note_count != 12) {
 // 			condensed_notes = false
-// 			condense_notes()
+// 			condensed_notes_toggle()
 // 		}
 // 		if(note_count == 12){
 // 			HIDE_FING_button.show()
@@ -836,20 +1047,29 @@ function update_vol(){
 function update_volumes(){
 	effects_volume_compensation = dry_wet_ratio * 0.5
 	nominal_vol = default_vol + effects_volume_compensation
-	vol = nominal_vol
+	vol = default_vol > 0 ? nominal_vol : 0
 	osc.amp(vol)
 
-	nominal_drone_vol = default_drone_vol + sq(1.5 * effects_volume_compensation)
-	if(default_drone_vol == 0 || !drone_playing){
-		nominal_drone_vol = 0
-	} 
-	drone_vol = constrain(nominal_drone_vol,0,1)
+	if(default_drone_vol == 0) nominal_drone_vol = 0
+	else nominal_drone_vol = default_drone_vol + sq(1.5 * effects_volume_compensation)
+
+	drone_vol = constrain(nominal_drone_vol, 0, 1)
 	drone_gain.amp(drone_vol, 0.1)
 }
 
-function update_tempo(){
-	tempo = TEMPO_slider.value()
-	storeItem("tempo", tempo)
+function update_tempo(update_multiplier = false){
+	if(update_multiplier){
+		const val = TEMPO_multiplier_slider.value()
+		if(val <= 2) tempo_multiplier = val / 4
+		else tempo_multiplier = val - 2
+		storeItem("tempo_multiplier", tempo_multiplier)
+	}
+	else{
+		base_tempo = TEMPO_slider.value()
+		storeItem("base_tempo", base_tempo)
+	}
+	
+	tempo = base_tempo * tempo_multiplier
 	chart.beat = 60 / tempo
 	chart.interval_time = chart.beat
 	chart.generate_note_lengths()
@@ -857,31 +1077,47 @@ function update_tempo(){
 }
 
 let drone_started = false
+let drone_note
 function toggle_drone(){
 	drone_playing = !drone_playing
 	if(drone_playing){
+		update_drone_freq('toggle drone')
 		if(!drone_started){
 			drone.start()
 			drone_env.triggerAttack(drone)
 			drone_started = true
-		} 
-		update_drone_freq('toggle drone')
+			if(midi_output_device){
+				drone_note = freqToMidi(drone_freq)
+				drone_output_channel.playNote(drone_note)
+			} 
+		}
 		update_volumes()
 		DRONE_button.style('backgroundColor', 'rgb(255,200,95)') //(212,140,0) = col2
 	}
 	else{
 		drone_started = false
 		drone_env.triggerRelease(drone)
+		if(midi_output_device && drone_note){
+			drone_output_channel.sendNoteOff(drone_note)
+			drone_note = null
+		}
 		DRONE_button.style('backgroundColor', 'rgb(240,240,240)')
 	}
 }
 
-
 function update_drone_freq(location='none') {
-	// if(round(drone_freq,3) != round(drone.getFreq(),3)){
-		// console.log(location) // for debugging
-		drone.freq(drone_freq)
-	// }	
+	// console.log(location) // for debugging
+	drone.freq(drone_freq)
+	if(midi_output_device){ 
+		if(drone_started){
+			new_drone_note = freqToMidi(drone_freq)
+			if(drone_note && drone_note !== new_drone_note){
+				drone_output_channel.sendNoteOff(drone_note)
+				drone_note = new_drone_note
+				drone_output_channel.playNote(drone_note)//, {attack: drone_vol})
+			} 
+		}
+	}
 }
 
 function toggle_tuning_slider(){
@@ -897,10 +1133,10 @@ function toggle_tuning_slider(){
 		tuning_slider_shown = false
 		TUNING_button.style('backgroundColor', 'rgb(240,240,240)')
 		if(tuning != initial_tuning){
-			update_chart = true
+			// update_chart = true
 			chart.create_frequencies()
 			chart.create_fingering_pattern()
-			chart.create_notes(update_label=true,update_color=true)
+			chart.create_notes(update_label=false,update_color=false, 'update tuning')
 			if(chart.playing_scale) restart_scale()
 			update_drone_freq('toggle_tuning_slider')
 		}
@@ -908,10 +1144,10 @@ function toggle_tuning_slider(){
 			tuning = default_tuning
 			TUNING_slider.value(tuning)
 			document.getElementById("TUNING").innerHTML = str(tuning) + ' Hz'
-			update_chart = true
+			// update_chart = true
 			chart.create_frequencies()
 			chart.create_fingering_pattern()
-			chart.create_notes(update_label=true,update_color=true)
+			chart.create_notes(update_label=false,update_color=false, 'update tuning')
 			if(chart.playing_scale) restart_scale()
 			update_drone_freq('toggle_tuning_slider')
 		}
@@ -946,6 +1182,7 @@ function toggle_tempo_slider(){
 	if(tempo_slider_shown){ 
 		if(misc_buttons_shown) SAVE_CHART_button.show()
 		TEMPO_slider.hide()
+		TEMPO_multiplier_slider.hide()
 		tempo_slider_shown = false
 		TEMPO_button.style('backgroundColor', 'rgb(240,240,240)')
 	}
@@ -957,6 +1194,7 @@ function toggle_tempo_slider(){
 		}
 		tempo_slider_shown = true
 		TEMPO_slider.show()
+		TEMPO_multiplier_slider.show()
 		TEMPO_button.style('backgroundColor', 'rgb(255,200,95)')
 	}
 }
@@ -1040,7 +1278,14 @@ function toggle_sequence_slider(){
 	}
 }
 
-let starting_note, starting_octave, new_instrument
+function TOGL_instrument(maintain_fingering = true){
+	let temp_name = instrument_name
+	instrument_select.value(previous_instrument_name)
+	update_instrument(false, maintain_fingering, !maintain_fingering)
+	previous_instrument_name = temp_name
+}
+
+let starting_octave, new_instrument
 
 function update_instrument(initial = true, maintain_fingering, maintain_key){
 	new_instrument = true
@@ -1048,27 +1293,39 @@ function update_instrument(initial = true, maintain_fingering, maintain_key){
 	// if(hide_fingering) hide_fingerings()
 	if(typeof chart != "undefined"){ if(chart.playing_scale) play = true }
 	instrument_obj = instruments_arr.find(x => x.name === instrument_name)
-	let previous_starting_note = starting_note //instrument_obj.key[0]
+	const temp_shift_amount = instrument_obj.shift_amount
+	let previous_starting_key = instrument_obj.key
 	update_chart = true
-	if(typeof chart != "undefined" && instrument_select.value() != previous_instrument && instrument_select.value() != instrument_name){
-		previous_instrument = instrument_name
-		storeItem("previous_instrument", previous_instrument)
+	if(typeof chart != "undefined" && instrument_select.value() != instrument_name){
+		previous_instrument_name = instrument_name
+		if(instrument_type == 'brass') storeItem("previous_brass_instrument_name", previous_instrument_name)
+		else if(instrument_type == 'recorder') storeItem("previous_recorder_name", previous_instrument_name)
+		else if(instrument_type == 'Irish whistle') storeItem("previous_Irish_whistle_name", previous_instrument_name)
 	}
 	if(typeof chart != "undefined" ) instrument_name = instrument_select.value()
 	instrument_obj = instruments_arr.find(x => x.name === instrument_name)
-	starting_note = instrument_obj.key[0]
-	starting_octave = instrument_obj.key[1]
-	
-	notes_arr = (starting_note == 'F')? notes_arr_F : notes_arr_C
-	
-	if(maintain_fingering && starting_note != previous_starting_note){
+	if(!instrument_obj){ // failsafe
+		instrument_obj = instruments_arr[0]
+		instrument_name = instrument_obj.name
+	} 
+	let starting_key = instrument_obj.key
+	starting_octave = int((instrument_obj.lowest + 57) / 12)
+	if(instrument_type == 'brass'){
+		if(instrument_name == 'Euphonium') fingering_data = euphonium_fingering_data
+		else if(instrument_name == 'Tuba') fingering_data = tuba_fingering_data
+		else fingering_data = trumpet_fingering_data
+		symbol_count = fingering_data[0].length
+	}
+	if(maintain_fingering && starting_key != previous_starting_key){
 		// find equivalent key name for the given fingering
-		let opp_array
-		if(notes_arr[0] == notes_arr_C[0]) opp_array = notes_arr_F
-		else opp_array = notes_arr_C
-		key_name = notes_arr[opp_array.indexOf(key_name)]
+		// to facilitate switching between F and C recorders
+		// since they are non-transposing instruments
+		key_name = transpose_note(key_name, instrument_obj.shift_amount - temp_shift_amount)
 	}	
-	else if(maintain_key != true) key_name = notes_arr[0]
+	else if(!maintain_key){
+		if(instrument_obj.key && instrument_obj.key != previous_starting_key) key_name = instrument_obj.key // the starting key for the instrument
+	}
+	// otherwise maintains current key by default
 
 	update_chart = true
 	chart = new fingering_chart(chart_x, chart_y) //x,y,noteWidth, noteHeight
@@ -1077,9 +1334,10 @@ function update_instrument(initial = true, maintain_fingering, maintain_key){
 	if(initial) update_drone_freq('update instrument')
 	if(show_info) generate_info_display()
 	new_instrument = false
-	storeItem("instrument_name", instrument_name)
+	if(instrument_type == 'brass') storeItem("brass_instrument_name", instrument_name)
+	else if(instrument_type == 'recorder') storeItem("recorder_name", instrument_name)
+	else if(instrument_type == 'Irish whistle') storeItem("Irish_whistle_name", instrument_name)
 }
-
 
 function update_scale(initial = true, history = false){
 	// console.log(scale_select.value().slice(scale_select.value().length-1))
@@ -1137,7 +1395,7 @@ function update_scale(initial = true, history = false){
 	create_dropdown(mode_x, control_y, modes_arr, mode_select, modes_arr[0], update_mode, 'mode_select')
 	mode_scale_type = minor_check() ? 'minor' : 'Major'
 	chart.create_fingering_pattern()
-	chart.create_notes(update_label=true,update_color=true)
+	chart.create_notes(update_label=true,update_color=true, 'update scale')
 	if(chart.playing_scale || playing_paused) restart_scale(true)
 	shuffled_mode_indices = [...Array(modes_arr.length).keys()]
 	shuffle(shuffled_mode_indices, true)
@@ -1205,7 +1463,7 @@ function update_mode(initial = true, history=false){
 	update_chart = true
 	chart.create_fingering_pattern()
 	// update_label can be false, except that some info is needed for the music notation generation.
-	chart.create_notes(update_label=true,update_color=true) 
+	chart.create_notes(update_label=true,update_color=true, 'update mode') 
 	if(chart.playing_scale || playing_paused) restart_scale()
 	if(initial) update_drone_freq('update mode')
 	if(mode_shift > 0) mode_select.style('backgroundColor', 'rgb(255,200,95)')
@@ -1225,18 +1483,20 @@ function update_mode(initial = true, history=false){
 // function go_to_scale_and_mode(){} // could do both at the same time for randomization?
 
 
-function update_key(initial = true){
+function update_key(initialize = true, update_all = true){
 	update_chart = true
 	selected_key_name = key_name
 	chart.create_fingering_pattern()
-	// if(!condensed_notes)	chart.create_notes(true,true)
-	// else 
-	chart.create_notes(update_label=true,update_color=true)
-	if(chart.playing_scale || playing_paused) restart_scale()
-	if(initial) update_drone_freq('update key')
-	if(show_info) generate_info_display()
-	storeItem("key_name", key_name)
-	stored_key_name = key_name
+	chart.create_notes(update_label = true, update_color = true, 'update key')
+	if(initialize){
+		if(chart.playing_scale || playing_paused) restart_scale()
+		update_drone_freq('update key')
+	} 
+	if(update_all){
+		if(show_info) generate_info_display()
+		storeItem("key_name", key_name)
+		stored_key_name = key_name
+	}
 }
 
 
