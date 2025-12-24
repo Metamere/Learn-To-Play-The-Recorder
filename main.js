@@ -35,7 +35,8 @@ let tuning// = default_tuning
 			// Some might default a bit higher because they can be tuned lower by pulling out the bottom piece a bit.
 let default_base_tempo = 120 // for scale sequence playback
 let default_tempo_multiplier = 1
-let base_tempo, tempo, tempo_multiplier
+let default_swing_factor = 0
+let base_tempo, tempo, tempo_multiplier, swing_factor
 let default_vol = 0.35
 let default_drone_vol = 0.15
 let default_sequence_number = 1
@@ -113,7 +114,7 @@ let main_output_channel = 0
 let drone_output_channel = 0
 let midi_output_device_count = 0
 let midi_output_enabled = false
-// let pitch_bend_val
+let midi_device_max_name_length = 0
 
 function preload() {
 
@@ -182,6 +183,7 @@ function preload() {
 		reverb.connect(delay)
 	}
 
+	swing_factor = lookup_item("swing_factor", default_swing_factor)
 	base_tempo = lookup_item("base_tempo", default_base_tempo)
 	tempo_multiplier = lookup_item("tempo_multiplier", default_tempo_multiplier)
 	tempo = base_tempo * tempo_multiplier
@@ -235,6 +237,9 @@ function lookup_item(lookup_key, default_value){
 }
 
 const midi_device_list = []
+// const main_midi_channels_list = []
+// const drone_midi_channels_list = []
+
 function setup(initial=true) {
 
 	if(max(displayWidth,displayHeight) < 1000){ // most likely a mobile display
@@ -270,11 +275,13 @@ function setup(initial=true) {
 	L = int(W - 3 * U)
 	text_size = int(U * 0.63)
 	if(tall_display){
-		text_size = U
+		text_size = ~~U
 		L = W 
 	}
+	text_size2 = int(U * 0.85)
 
 	if(initial){
+
 		WebMidi
 			.enable()
 			.then(onEnabled)
@@ -282,20 +289,24 @@ function setup(initial=true) {
 
 		// Function triggered when WEBMIDI.js is ready
 		function onEnabled() {
-
+			push()
+			textSize(text_size2)
 			// Display available MIDI devices
 			if (WebMidi.outputs.length > 0) {
 				WebMidi.outputs.forEach((device, index) => {
-					midi_device_list.push({ original_index: index, name: device.name })
-					// console.log(`${index}: ${device.name}`)
-					// in case a note or drone was left playing
-					for(let i = 0; i < 128; i++){
+					midi_device_max_name_length = max(midi_device_max_name_length, textWidth(device.name))
+					if(midi_device_list.length == 0 || !midi_device_list.some(e => e.name === device.name)){
+						midi_device_list.push({ original_index: index, name: device.name })
+						// console.log(`${index}: ${device.name}`)
+					}
+					for(let i = 0; i < 128; i++){  // just in case a note or drone was left playing
 						device.sendNoteOff(i, {channels: [1,2]})
 					}
 					midi_device_list.sort((a, b) => a.name.localeCompare(b.name))
 				})
 				midi_output_device_count = WebMidi.outputs.length
 			}
+			pop()
 		}
 		createCanvas(W, H)
 		chart = new fingering_chart(chart_x, chart_y)
@@ -341,7 +352,7 @@ function setup(initial=true) {
 	if(typeof set_show_seq === 'function') set_show_seq()
 }
 
-function play_oscillator(note, freq=0, duration=0) {
+function play_oscillator(note, freq=0, duration=0, start_time=0) {
   if(!freq) freq = note.frequency
 	playing = true
 	vol = min(nominal_vol, 1)
@@ -349,11 +360,14 @@ function play_oscillator(note, freq=0, duration=0) {
 	if(default_vol > 0){
 		note_start_time = ~~millis()
 		if (!osc_started) osc_started = true
-		if(duration > 0) osc.play(freq, vol, 0, duration) // for when playing a sequence
+		if(duration > 0){
+			osc.play(freq, vol, start_time, duration) // for when playing a sequence
+			// console.log(start_time, duration)
+		} 
 		else osc.triggerAttack(freq, vol)
 	}
 	current_frequency = freq
-	if(midi_output_enabled && note.midi_note != current_midi_note_on) send_midi_note(note, true, duration)
+	if(midi_output_enabled && note.midi_note != current_midi_note_on) send_midi_note(note, true, duration, start_time)
 }
 
 var current_midi_note_on = -1
@@ -696,6 +710,9 @@ function play_scale(restart = true){
 				playing_note.release()
 			} 
 			chart.playing_scale = false
+			play_clock = 0
+			chart.time = 0
+			seq_display.x_diff = 0
 			playing_paused = false
 			PLAY_button.style('backgroundColor', 'rgb(240,240,240)')
 			if(show_seq) chart.generate_sequence_display()
@@ -717,6 +734,8 @@ function toggle_pause(disable = false){
 			playing_note.release()
 		} 
 		playing_note = null
+		chart.time = 0
+		seq_display.x_diff = 0
 		PLAY_button.style('backgroundColor', 'rgb(240,240,240)')
 		return
 	}
@@ -724,15 +743,19 @@ function toggle_pause(disable = false){
 		playing_paused = !playing_paused
 		if(playing_paused){
 			osc.triggerRelease()
+			play_clock = chart.time
 			if(main_output_channel) send_midi_note(playing_note, false)
 		} 
-		else{
-			osc.triggerAttack(frequency, vol)
-			playing_note.press()
-		} 
+		// else{
+		// 	osc.triggerAttack(frequency, vol)
+		// 	playing_note.press()
+		// } 
 		chart.playing_scale = !chart.playing_scale
 		if(chart.playing_scale)	PLAY_button.style('backgroundColor', 'rgb(255,200,95)')
-		else PLAY_button.style('backgroundColor', 'rgba(182, 139, 60, 1)')
+		else{
+			playing_note = null
+			PLAY_button.style('backgroundColor', 'rgba(182, 139, 60, 1)')
+		} 
 	}
 	else {
 		chart.play_scale(!allow_continue)
@@ -1070,11 +1093,11 @@ function input_pressed(){
 		toggle_waveform_display()
 		return
 	}
-	
-	if(in_seq_display(mouseX, mouseY)){
+	const in_seq_area = in_seq_display(mouseX, mouseY)
+	if(in_seq_area){
 		seq_press_start = ~~millis()
 		sequence_display_toggle_primed = true
-		sequence_change_primed = true
+		sequence_change_primed = in_seq_area
 		sequence_control_change_primed = true
 		return
 	}
@@ -1116,7 +1139,7 @@ function input_dragged(){
 		if(x_move_dir){
 			x_start += x_step * x_move_dir
 			sequence_display_toggle_primed = false
-			if(chart.playing_scale || playing_paused){
+			if((chart.playing_scale || playing_paused) && sequence_change_primed != 1){
 				sequence_change_primed = false
 				if(x_move_dir == 1)	direction_change_tracking_right++
 				else direction_change_tracking_left++
@@ -1138,8 +1161,14 @@ function input_dragged(){
 				}
 			}
 			else if(sequence_change_primed){
-				sequence_number = constrain(sequence_number + x_move_dir, 1, 17)
-				update_sequence(sequence_number)
+				if(sequence_change_primed == 2){
+					sequence_number = constrain(sequence_number + x_move_dir, 1, 17)
+					update_sequence(sequence_number)
+				}
+				else {
+					swing_factor = round(constrain(swing_factor + x_move_dir * 0.05, -0.5, 0.5), 2)
+					update_swing()
+				}
 			}
 		}
 		if(y_move > y_move_amount) y_move_dir = 1
@@ -1581,15 +1610,17 @@ function in_seq_display(x, y){
 	if(vol_slider_shown || drone_vol_slider_shown || tempo_slider_shown || 
 		tuning_slider_shown || save_confirm_shown){
 		return false
-	} 
-	return (seq_display.x1 <= x && x <= seq_display.x2 && seq_display.y1 <= y && y <= seq_display.y2)
+	}
+	let val = (seq_display.x1 <= x && x <= seq_display.x2 && seq_display.y1 <= y && y <= seq_display.y2)
+	if(val && y > (seq_display.y1 + seq_display.y2)/2) val = 2 // for lower half
+	return val
 }
 
 function in_staff_display(x, y){
 	if(tempo_slider_shown || misc_buttons_shown){
 		return false
 	}
-	return (U * 13.5 <= x && x <= U * 16 && U * 1.5 <= y && y <= U * 6.25)
+	return (U * 14.35 <= x && x <= U * 16 && U * 1.5 <= y && y <= U * 6.25)
 }
 
 function in_pattern_representation(x, y){

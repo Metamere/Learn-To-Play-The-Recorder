@@ -314,8 +314,17 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 12-14-25
 	- split the tempo slider into a base tempo and a tempo multiplier (0.25, 0.5, 1, 2, 3, 4). 
 	To make practicing at a series of increasing tempos a bit easier.
+12-23-25
+	- added a swing factor control, drag left or right in the sequence display top half
+	(bottom half only for sequence number now or playback control now)
+	- made the sequence display show a continuous position indicator when the tempo is less than 120 bpm.
+
 
 To-do:
+- refine the sequence wait time for start/end, when repeating and/or reversing, etc. 
+Maybe a rest symbol control button that adds or removes the rests, or changes the length.
+- add midi channel selection options, since it's possible to send melody or drone 
+on any/all of the 16 available channels. Add midi auto-connect feature. Will need to save connection device and channel preferences.
 - prevent midi note re-trigger when moving to a new note if the pitch has been bent such that it is very close to the new note.
 - hold_fing instrument toggle doesn't work properly for brass instruments. Maybe note applicable in the same way.
 - fix issues with save_chart.

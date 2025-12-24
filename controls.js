@@ -26,8 +26,8 @@ let MIDI_OUTPUT_button = false
 
 function create_controls(initial=true){
 	inst_x = 2 * U
-	scale_x = chart_x + 5.5 * U + inst_x
-	mode_x = chart_x + 15 * U + inst_x
+	scale_x = chart_x + 4.5 * U + inst_x
+	mode_x = chart_x + 14 * U + inst_x
 	control_y = 0
 	
 	const button_h = int(1.65 * U)
@@ -446,7 +446,6 @@ function create_controls(initial=true){
 		SEQUENCE_slider.input(function() {update_sequence(0)})
 		SEQUENCE_slider.hide()
 		SEQUENCE_slider.addClass("slider")
-		SEQUENCE_slider.value(sequence_number)
 		let seq_chars = sequence_number + ((chart.default_reversal_setting && abs(dir_override) == 1) || 
 		(!chart.default_reversal_setting && dir_override == 2) ? '*' : '')
 		document.getElementById("SEQUENCE").innerHTML = 'SEQ. ' + seq_chars
@@ -454,17 +453,19 @@ function create_controls(initial=true){
 	SEQUENCE_slider.position(chart_x + 0.2 * U, control_y + 4.55 * U)
 	SEQUENCE_slider.size(U * 12.35)
 
-	
 	if(initial){
-		OCTAVES_button = createButton(str(octaves_to_play))
-		OCTAVES_button.mousePressed(function() {set_octaves_to_play(0)})
-		OCTAVES_button.id('OCTAVES')
-		OCTAVES_button.hide()
-	} 
-	OCTAVES_button.style("font-size", int(U * 0.85) + "px")
-	OCTAVES_button.size(button_hs, button_hs)
-	OCTAVES_button.position(U * 12.5,  U * 2.9)
-	
+		SWING_info = createButton(swing_factor)
+		SWING_info.id('SWING')
+		SWING_info.mousePressed(toggle_swing)
+		SWING_info.style("font-size", min(button_h, int(U * (0.75 + 0.5 * mobile))) + "px")
+		SWING_info.style("text-align", "left")
+		SWING_info.style("padding-left", U * 0.2 + "px")
+	}
+	SWING_info.position(27 * U, control_y)
+	SWING_info.size(U * 2.1, U * 0.9)
+
+	const y_seq = U * 2.85
+
 	if(initial){
 		REVERSE_button = createButton('◀') // ⬅️
 		REVERSE_button.mousePressed(function() {direction_mode_switch(-1)})
@@ -482,6 +483,10 @@ function create_controls(initial=true){
 		LOOP_button.mousePressed(toggle_loop_mode)
 		LOOP_button.id('BOTH')
 		LOOP_button.hide()
+		OCTAVES_button = createButton(str(octaves_to_play))
+		OCTAVES_button.mousePressed(function() {set_octaves_to_play(0)})
+		OCTAVES_button.id('OCTAVES')
+		OCTAVES_button.hide()
 	} 
 
 	REVERSE_button.style("font-size", scl_L2 + "px")
@@ -498,7 +503,11 @@ function create_controls(initial=true){
 
 	LOOP_button.style("font-size", scl_L2 + "px")
 	LOOP_button.size(button_hs, button_hs)
-	LOOP_button.position(U * 7, U * 2.85)
+	LOOP_button.position(U * 7.25, y_seq)
+
+	OCTAVES_button.style("font-size", scl_L2 + "px")
+	OCTAVES_button.size(button_hs, button_hs)
+	OCTAVES_button.position(U * 9,  y_seq)
 	
 	if(MIDI_OUTPUT_button) midi_output_button_style_update()
 	// if(initial) notes_count_input = createInput(str(note_count))
@@ -559,7 +568,7 @@ function MISC_MENU_buttons_toggle(){
 	misc_buttons_shown = !misc_buttons_shown
 	if(misc_buttons_shown){
 		if(!MIDI_OUTPUT_button && midi_output_device_count){
-			MIDI_OUTPUT_button = createButton(midi_output_device_count + ' MIDI OUT')
+			MIDI_OUTPUT_button = createButton(`${midi_output_device_count > 1 ? midi_output_device_count + ' ' : ''}MIDI OUT`)
 			TYPE_MENU_button.id('MIDI')
 			MIDI_OUTPUT_button.hide()
 			MIDI_OUTPUT_button.mousePressed(midi_output_selection_menu_toggle)
@@ -652,10 +661,11 @@ let midi_output_device_index = null
 function midi_output_selection_menu_toggle(){
 	if(!midi_output_device_count) return
 	if(midi_output_buttons.length == 0){
-		const button_width = U * 14
-		const button_height = U * 1.5
+		const button_width = midi_device_max_name_length + U // U * 14
+		const button_stack = constrain(midi_output_device_count, 2, 4)
+		const button_height = U * (6 / button_stack)
 		const y0 = chart_y + chart_h
-		const font_str = int(U * 0.85) + 'px'
+		const font_str = text_size2 + 'px'
 		let previous_device_name = ''
 		for(let i = 0; i < midi_output_device_count; i++){
 				let list_item = midi_device_list[i]
@@ -664,7 +674,7 @@ function midi_output_selection_menu_toggle(){
 				previous_device_name = device_name
 				let button = createButton(device_name)
 					.size(button_width, button_height)
-					.position(U * 1.5 + button_width * int(i / 4), y0 - button_height * (1 + i % 4))
+					.position(U * 1.5 + button_width * int(i / button_stack), y0 - button_height * (1 + i % button_stack))
 					.style("font-size", font_str)
 					.id('MIDI_' + i)
 					.mousePressed(function() {
@@ -994,6 +1004,27 @@ function update_sequence(number = 0){
 		set_direction_button_colors()
 		set_play_button_chars()
 	}
+}
+
+function update_swing(){
+	storeItem("swing_factor", swing_factor)
+	document.getElementById("SWING").innerHTML = swing_factor
+	update_seq_display = true
+	chart.generate_sequence()
+}
+
+let stashed_swing_factor = 0
+function toggle_swing(){
+	if(stashed_swing_factor){
+		swing_factor = stashed_swing_factor
+		stashed_swing_factor = 0
+	} 
+	else if(swing_factor != 0){
+		stashed_swing_factor = swing_factor
+		swing_factor = 0
+	}
+	else return
+	update_swing()
 }
 
 function random_mode(){

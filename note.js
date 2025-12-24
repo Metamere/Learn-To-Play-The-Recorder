@@ -400,7 +400,7 @@ class note {
 		return (this.buffer_margin < dx && dx < this.w - this.buffer_margin && 0 < dy && dy <= this.above)
 	}
 	
-	press(duration = 0, staccato = false){
+	press(duration = 0, staccato = false, delay_time = 0){
 		this.is_pressed = 1
 		this.redraw = true
 		redraw_notes = true
@@ -411,7 +411,7 @@ class note {
 			play_oscillator(this, this.frequency, staccato_duration)
 			osc.setADSR(0.2,0.2,0.75,0.1)
 		} 
-		else play_oscillator(this, this.frequency, duration)
+		else play_oscillator(this, this.frequency, duration, delay_time)
 	}
 	release(){
 		this.is_pressed = 0

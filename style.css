@@ -86,7 +86,7 @@ button:active {
 	border-radius: 0.5em
 }
 
-input[type=radio] {
+input[type=number] {
   width: 25%;
   height: min(3vw, 6vh);
   vertical-align: bottom;
