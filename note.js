@@ -37,6 +37,7 @@ class note {
 		this.freq_bend_above = frequency * bend_factor - this.frequency
 		this.freq_bend_below = frequency / bend_factor - this.frequency
 		this.index = index
+		this.x_pos = 0
 		this.special_note = (instrument_type == 'Irish whistle' && this.index == 10)
 		this.chart_index = chart_index
 		this.accidental_type = accidental_type
@@ -44,7 +45,18 @@ class note {
 		this.wt = int(U / 15)
 		this.dots = min(7, note_count)
 		this.note_name = str(notes_arr[this.index % note_count])
-		this.note_display_name = this.note_name
+		if(this.note_name.length > 1){
+			if(this.accidental_type == '♯') this.note_display_name = this.note_name[0] + '♯'
+			else this.note_display_name = this.note_name.charAt(3) + '♭'
+		}
+		else this.note_display_name = this.note_name
+
+		const offset = instrument_obj.shift_amount
+		const offset2 = instrument_obj.octave_offset ? instrument_obj.octave_offset : 0
+		this.octave_offset = int((this.index + offset) / note_count) + offset2
+		this.current_octave = int(starting_octave) + this.octave_offset - offset2
+
+		this.y_note_index = "CDEFGAB".indexOf(this.note_display_name[0]) + (this.octave_offset) * 7
 		if(this.note_name == key_name) this.key_note = true
 		else this.key_note = false
 		this.wrapped = wrapped
@@ -68,12 +80,11 @@ class note {
 		}
 		const pos = U * 0.1
 		const sub_pos = U * 0.25
-		const offset = instrument_obj.shift_amount
-		const offset2 = instrument_obj.octave_offset ? instrument_obj.octave_offset : 0
-		this.octave_offset = int((this.index + offset) / note_count) + offset2
-		this.current_octave = int(starting_octave) + this.octave_offset - offset2
+
 		let invert = false // check whether a white key needs to be flatted or sharped
-		this.y_note_index = "CDEFGAB".indexOf(this.note_display_name[0]) + (this.octave_offset) * 7
+		// if(this.accidental_type == '♯') this.note_display_name = this.note_name[0] + '♯'
+		// else if(this.accidental_type == '♭' && this.note_name.length > 1) this.note_display_name = this.note_name.charAt(3) + '♭'
+		
 		if(this.note_name.length === 1 || note_count < 12){
 			this.numeral = str(this.current_octave)
 			if(accidental_count == 6){
@@ -81,11 +92,15 @@ class note {
 					invert = true
 					this.note_display_name = 'E♯'
 					this.numeral = '♯'
+					this.accidental_type == '♯'
+					this.y_note_index = "CDEFGAB".indexOf(this.note_display_name[0]) + (this.octave_offset ) * 7
 				}
 				else if(this.note_name == 'B' && accidental_notes == 'BEADGC'){
 					invert = true
 					this.note_display_name = 'C♭'
 					this.numeral = '♭' // 𝄪 𝄫
+					this.accidental_type == '♭'
+					this.y_note_index = "CDEFGAB".indexOf(this.note_display_name[0]) + (this.octave_offset + 1) * 7
 				}
 			}
 			if(this.wrapped) return
@@ -142,12 +157,10 @@ class note {
 					rect(this.mid, this.y - 0.75 * U, this.w * 0.95, this.above) 
 				}
 				pop()
-				if(default_sharp) this.note_display_name = this.note_name[0] + '♯'
-				else this.note_display_name = this.note_name.charAt(3) + '♭'
+				// if(default_sharp) this.note_display_name = this.note_name[0] + '♯'
+				// else this.note_display_name = this.note_name.charAt(3) + '♭'
 			}
 			else{
-				if(this.accidental_type == '♯') this.note_display_name = this.note_name[0] + '♯'
-				else this.note_display_name = this.note_name.charAt(3) + '♭'
 				push()
 				fill(0,0,15)
 				textSize(U * 0.8)
@@ -195,7 +208,7 @@ class note {
 			if(display_staff)	this.generate_engraving()
 		}
 
-		if(!update_chart && this.redraw){
+		if(!persistent_dots && !update_chart && this.redraw){
 			// draw dot at corresponding location on pattern representation
 			push()
 			noStroke()
@@ -420,30 +433,31 @@ class note {
 		if(midi_output_enabled && current_midi_note_on != -1) send_midi_note(this, false)
 	}
 
-	generate_engraving(draw_staff=true, ghost_note=false){
+	generate_engraving(draw_staff = true, ghost_note = false, x_offset = 0, natural = false){
 
 		// 𝄞 𝄢 ♯♭♮ 𝄚 ♪ 𝅘𝅥𝅮𝅘𝅥𝅗𝅥𝅝
-		const x0 = chart.sd.x0
-		const y0 = chart.sd.y0
-		const M = chart.sd.M
-		const M2 = chart.sd.M2
-		const xm = chart.sd.xm
-		const w = chart.sd.w
-		const S = chart.sd.S
-		const x1 = chart.sd.x1
-		const y3 = chart.sd.y3
-		const y_pos_staff = chart.sd.y_pos_staff
-		const y_pos = y_pos_staff + S - this.y_note_index * S * 0.5 + chart.bass_instrument * S
+		const x0 = staff_dims.x0 + x_offset
+		const y0 = staff_dims.y0
+		const M = staff_dims.M
+		const M2 = staff_dims.M2
+		const xm = staff_dims.xm + x_offset
+		const w = staff_dims.w
+		const S = staff_dims.S
+		const x1 = staff_dims.x1 + x_offset
+		const y1 = staff_dims.y1
+		const y_pos_staff = staff_dims.y_pos_staff
+		const y_pos = int(y_pos_staff + S - this.y_note_index * S * 0.5 + chart.bass_instrument * S)
+		const wt = staff_dims.wt
 
 		push()
 		if(draw_staff){
 			noStroke()
 			fill(255)
 			rectMode(CORNERS) 
-			rect(x0 - M2, y3 - M2, x1 + M2, y0 + M2) // clear staff area
+			rect(x0 - M2, y1 - M2, x1 + M2, y0 + M2) // clear staff area
 
 			push()  // draw clef symbol
-				rect(x0 - 1.2 * U, y3 + U, x0, y0)  // clear clef area
+				rect(x0 - 1.2 * U, y1, x0, y0)  // clear clef area
 				fill(0)
 				if(chart.bass_instrument){ 
 					// scaled_text('𝄢', U * 1.2, x0 - U * 0.65, y_pos_staff - U * 1.75)
@@ -458,44 +472,60 @@ class note {
 			pop()
 			
 			stroke(0)
-			strokeWeight(U * 0.08)
-			rect(x0, y0, x1, y3, M) // note rep boundary box with filleted corners
+			strokeWeight(wt * 2)
+			rect(x0, y0, x1, y1, M) // note rep boundary box with filleted corners
 			
-			strokeWeight(U * 0.04)
+			strokeWeight(wt)
 			for(let i = 0; i < 5; i++){ // staff lines
 				const y_pos_line = y_pos_staff - i * S
 				line(x0, y_pos_line, x1, y_pos_line)
 			}
 		}
 
+		push()
+		let opacity = ghost_note? 75 : 255
+		noStroke()
+		fill(0, opacity)
+		ellipse(xm, y_pos, S * 1.3, S * 0.85)
+		fill(255)
+		ellipse(xm, y_pos, S * 0.8, S * 0.68)
+		if(this.note_val == 2){
+			fill(...col2, 100)
+			ellipse(xm, y_pos, S * 0.8, S * 0.68)
+		}
+		pop()
+
+		push()
+		stroke(0, opacity)
+		strokeWeight(wt)
+		strokeCap(SQUARE)
+		const lw = 2.3 * M
 		// draw lines above or below staff
 		if(y_pos > y_pos_staff + 0.5 * S || y_pos < y_pos_staff - 4.5 * S){
-			push()
-			stroke(0)
-			strokeWeight(U * 0.03)
 			if(y_pos > y_pos_staff){ 
-				const lines_below = round((y_pos - y_pos_staff) / S)
-				const index_offset = (this.y_note_index % 2 == 0) ? 0 : S/2
+				const lines_below = int((y_pos - y_pos_staff) / S)
+				const index_offset = (this.y_note_index % 2 == 0) ? 0 : int(S * 0.5)
 				for(let i = 0; i < lines_below; i++){
 					let y_pos_S = y_pos - i * S - index_offset
-					line(xm - 2.7 * M, y_pos_S , x1 - M * 0.9, y_pos_S)
+					line(xm - lw, y_pos_S , xm + lw, y_pos_S)
 				}
 			}
 			else{
-				const lines_above = round(((y_pos_staff - S * 4) - y_pos) / S)
-				const index_offset = (this.y_note_index % 2 == 0) ? 0 : S/2
+				const lines_above = int(((y_pos_staff - S * 4) - y_pos) / S)
+				const index_offset = (this.y_note_index % 2 == 0) ? 0 : int(S * 0.5)
 				for(let i = 0; i < lines_above; i++){
 					let y_pos_S = y_pos + i * S + index_offset
-					line(xm - 2.7 * M, y_pos_S , x1 - M * 0.9, y_pos_S)
+					line(xm - lw, y_pos_S , xm + lw, y_pos_S)
 				}
 			}
-			pop()
 		}
-		let opacity = ghost_note? 65 : 255
-		stroke(0, opacity)
-		strokeWeight(U * 0.08)
-		fill(255, 0)
-		ellipse(xm, y_pos, S * 1.3, S * 0.85)
+		else if(this.y_note_index % 2 == 0){
+			stroke(0)
+			line(xm - S * 0.7, y_pos , xm + S * 0.7, y_pos)
+		} 
+		pop()
+
+		// console.log(this.note_display_name, y_pos)
 		// push() // quarter note symbol. Easier to draw manually? especially for inverted.
 		// fill(0, opacity)
 		// noStroke()
@@ -503,9 +533,9 @@ class note {
 		// textSize(S * 4.8)
 		// text('𝅘𝅥',xm, y_pos - S * 0.85)
 		// pop()
+		noStroke()
+		fill(0, opacity)
 		if(this.note_display_name.length >= 2){
-			noStroke()
-			fill(0, opacity)
 			let sign = this.accidental_type
 			if(this.accidental_type == 'ALL'){
 				if(default_sharp /*&& key_sig.length < 2*/) sign = '♯'
@@ -513,14 +543,18 @@ class note {
 			}
 			let acc_offset
 			if(sign == '♯'){ 
-				acc_offset = [w * 0.25, S * 0.9]
+				acc_offset = [w * 0.3, S * (0.9 + 0.06 * mobile)]
 				textSize(S * 2.2)
 			}
 			else{
-				acc_offset = [w * 0.25, 1.55 * S]
-				textSize(S * 2.65)
+				acc_offset = [w * 0.3, S * (1.55 + 0.45 * mobile)]
+				textSize(S * (2.65 + 0.4 * mobile))
 			}
 			text(sign, x0 + acc_offset[0], y_pos - acc_offset[1])
+		}
+		else if(natural){
+			textSize(S * (2.8 - 0.4 * mobile))
+			text('♮', x0 + w * 0.33, y_pos - S * (1.2 + 0.45 * mobile))
 		}
 		pop()
 	} // end note engraving function

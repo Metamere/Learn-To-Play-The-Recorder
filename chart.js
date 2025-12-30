@@ -58,6 +58,7 @@ class fingering_chart {
 		this.notes_sequence = []
 		this.notes_sequence_lengths = []
 		this.scale_notes = []
+		this.octave_scale_notes = []
 		this.notes = []
 		this.all_notes = []
 		this.scale_note_names_sharp = []
@@ -93,37 +94,25 @@ class fingering_chart {
 		this.last_scale_note = null
 		update_seq_display = true
 		this.bass_instrument = instrument_obj.bass_instrument ? 1 : 0
-
-		// staff dimensions
-		const x0 = U * 14.4
-		const y0 = U * 6.4 // lowest part on screen
-		const M = U * 0.15
-		const M2 = M/2
-		const xm = x0 + U
-		const w = U * 1.55
-		const h = U * 5.5
-		const S = U * 0.4
-		const x1 = x0 + w
-		const y3 = y0 - h
-		const y_pos_staff = y0 - M - U * 1.5 - this.bass_instrument * S
-		this.sd = { x0, y0, M, M2, xm, w, S, x1, y3, y_pos_staff }
+		staff_dims.y_pos_staff = int(staff_dims.y_pos0 - this.bass_instrument * staff_dims.S)
 	}
 
 	_handlePlayingScale() {
-		if(chart.playing_scale && !playing_paused) play_clock++
+		// increment play clock in seconds using deltaTime so timing is independent of frame rate
+		if(chart.playing_scale && !playing_paused) play_clock += deltaTime * 0.001
 		// elapsed_time = millis() * 0.001 - this.time
 		elapsed_time = play_clock - this.time
 		// Use a capped wait when the sequence hasn't started yet so very low BPM
 		// doesn't delay the initial note for too long.
 		// if (!this.started) {
 		// 	// faster tempo have longer waits, I guess the note start time and swing cause it to get eaten into.
-		// 	wait_time = constrain(this.interval_time, 0.5, 3.0) * 60 // constrain initial wait time
+		// 	wait_time = constrain(this.interval_time, 0.5, 3.0) // constrain initial wait time (seconds)
 		// }
 		// else 
-			wait_time = this.interval_time * 60
+			wait_time = this.interval_time // interval_time is in seconds
 		// wait_ratio = round(this.dir * (1 - (wait_time - elapsed_time)) / wait_time,3)
 		wait_ratio = round(1 - (wait_time - elapsed_time) / wait_time,3)
-		if (show_seq && tempo <= tempo_scroll_limit && this.started) {
+		if (show_seq && !sheet_music_display_mode && tempo <= tempo_scroll_limit && this.started) {
 			this.generate_sequence_display(this.sequence_note_index, this.next_sequence_note_index)
 			push()
 			const from_x = (seq_display.x || 0)
@@ -133,9 +122,12 @@ class fingering_chart {
 			// draw vertical indicator line
 			if (this.dir == 1) stroke(255, 80, 50, 140)
 			else stroke(50, 80, 255, 140)
-			strokeWeight(max(1, (this.override_OTP == 1 ? 1 : 0.6) * U * 0.15))
+			strokeWeight(round(max(1, (this.override_OTP == 1 ? 1 : 0.6) * U * 0.15)))
 			strokeCap(ROUND)
-			if (seq_display.y1 != null && seq_display.y2 != null) line(x_current, seq_display.y1, x_current, seq_display.y2)
+			const M_local = U * (0.35 - 0.1 * (this.override_OTP - 1))
+			const inner_y0 = seq_display.y0 + M_local
+			const inner_y1 = seq_display.y1 - M_local
+			if (inner_y0 != null && inner_y1 != null) line(x_current, inner_y0, x_current, inner_y1)
 
 			// draw a small highlight at the current play position
 			noStroke()
@@ -161,7 +153,7 @@ class fingering_chart {
 				if(playing_note){
 					frequency = playing_note.frequency
 					const rest_time = min(this.interval_time * 0.2, 3)
-					const lead_time = 0.1 // min(this.interval_time * 0.5, 2)
+					const lead_time = 0.1 // min(this.interval_time * 0.5, 2) // why doesn't this work anymore?
 					const remaining_time = this.interval_time * (1 - wait_ratio < 1 ? wait_ratio : 0) - rest_time
 					// console.log('resume', this.interval_time, rest_time, wait_ratio, remaining_time)
 					playing_note.press(remaining_time, false, lead_time)
@@ -170,11 +162,9 @@ class fingering_chart {
 					console.log('no playing_note')
 				}
 			}
-			// else { console.log(!playing_note) }
 			return
 		}
-		// else return
-		// if (!(elapsed_time > wait_time)) return
+
 		if (this.started) {
 			this.current_note_index++
 			this.sequence_note_index += this.dir
@@ -182,7 +172,7 @@ class fingering_chart {
 		}
 
 		redraw_notes = true
-		this.time = play_clock //millis() * 0.001
+		this.time = play_clock
 		// pick interval for the upcoming note taking direction into account
 		if(this.dir == -1){
 			const n = this.notes_sequence_lengths.length - 1
@@ -217,22 +207,28 @@ class fingering_chart {
 		this.started = true
 		redraw_waveform = true
 
-		if(show_seq && (tempo > tempo_scroll_limit //)){ 
-			|| this.sequence_note_index == this.notes_sequence.length - 1 
-			|| this.sequence_note_index == 0)) {
-			// console.log(this.sequence_note_index)
-			this.generate_sequence_display(this.sequence_note_index, this.next_sequence_note_index)
+		if(show_seq){
+			// if(sheet_music_display_mode){
+			// 	if(playing_note.x_pos)
+			// }
+			// else 
+			if(tempo > tempo_scroll_limit //)){ 
+				|| this.sequence_note_index == this.notes_sequence.length - 1 
+				|| this.sequence_note_index == 0){
+				// console.log(this.sequence_note_index)
+				this.generate_sequence_display(this.sequence_note_index, this.next_sequence_note_index)
+			}
 		}
 
 		// reset position when reaching end
 		if (this.current_note_index == this.notes_sequence.length - 1) {
-				this.current_note_index = 0
-				this.next_sequence_note_index = 1
-				this.index_offset = 0
-				this.started = false
-				// reset timing so that repeat doesn't immediately advance; start the wait anew
-				// Use play_clock (tick counter) to match elapsed_time computation
-				this.time = play_clock
+			this.current_note_index = 0
+			this.next_sequence_note_index = 1
+			this.index_offset = 0
+			this.started = false
+			// reset timing so that repeat doesn't immediately advance; start the wait anew
+			// Use play_clock (tick counter) to match elapsed_time computation
+			this.time = play_clock
 			if (this.repeat) {
 				if (dir_override >= 0){
 					this.sequence_note_index = 0
@@ -402,6 +398,7 @@ class fingering_chart {
 		}
 		// console.log(accidental_notes)
 		this.generate_sequence()
+		if(sheet_music_display_mode) this.generate_sequence_display()
 		scale_notes_length_temp = scale_pattern.length * this.override_OTP
 	}
 
@@ -502,6 +499,38 @@ class fingering_chart {
 		}
 		this.key_signature = [key_sig, accidental_count]
 		note_span = this.last_scale_note_index - this.first_scale_note_index
+
+		this.scale_notes = []
+		this.octave_scale_notes = []
+		scale_offset = 0
+		let octave_started = false
+		let octave_ended = false
+		let scale_note_count = 0
+		const lowest_start = instrument_obj.lowest_octave_scale_note_index ? instrument_obj.lowest_octave_scale_note_index : 0
+		for (let note of this.notes) {
+			if (note.note_val > 0 && note.index >= lowest_start) {
+				if(octave_started && !octave_ended){
+					if(note.note_val > 0){
+						this.octave_scale_notes.push(note)
+						if(note.note_val == 2) octave_ended = true
+					} 
+				}
+				if (note.note_val == 2 && octave_started == false) {
+					// find first note in scale and which it is in the order
+					octave_started = true
+					scale_offset = scale_note_count
+					this.octave_scale_notes.push(note)
+				}
+				this.scale_notes.push(note)
+				scale_note_count++
+			}
+		}
+		this.octave_scale_letters_set = []
+		for (let i = 0; i < this.octave_scale_notes.length - 1; i++){
+			this.octave_scale_letters_set.push(this.octave_scale_notes[i].note_display_name[0])
+		}
+		// This determines whether a key signature can be generated. And possibly can use this to simplify other stuff.
+		this.scale_has_duplicate_letters = duplicates_check(this.octave_scale_letters_set)
 	}
 
 	draw() {
@@ -869,23 +898,8 @@ class fingering_chart {
 				this.dir = 1
 			}
 		} 
-		this.scale_notes = []
-		let started = false
 		seq_display.x_diff = 0
 		chart.time = 0
-		scale_offset = 0
-		let count = 0
-		for (let note of this.notes) {
-			if (note.note_val > 0) {
-				if (note.note_val == 2 && started == false) {
-					// find first note in scale and which it is in the order
-					started = true
-					scale_offset = count
-				}
-				this.scale_notes.push(note)
-				count++
-			}
-		}
 		// use play_clock (tick counter) to stay consistent with _handlePlayingScale timing
 		this.time = play_clock
 		if (this.playing_scale == false) {
@@ -896,82 +910,108 @@ class fingering_chart {
 		}
 	}
 
-	generate_sequence_display(playing_note_index = null, next_playing_note_index = null){ //, ratio = 0) {
-		
-		const M = U * (0.35 - 0.1 * (this.override_OTP - 1))
+	generate_sequence_display(playing_note_index = null, next_playing_note_index = null){
 
-		if(playing_note_index == null){
-			const x1 = chart_x2 - 13.5 * U
-			const x2 = chart_x2 + 0.1 * U
-			const y1 = 0.75 * U
-			const y2 = chart_y - 1.55 * U
-			
-			seq_display.x0 = x1
-			seq_display.y0 = y1
-			seq_display.x1 = x1 + M
-			seq_display.y1 = y1 + M
-			seq_display.x2 = x2 - M
-			seq_display.y2 = y2 - M
-			seq_display.x3 = x2
-			seq_display.y3 = y2
-			seq_display.w = int(x2 - x1)
-			seq_display.h = int(y2 - y1)
-		}
+		const M = U * (0.35 - 0.1 * (this.override_OTP - 1))
+		// seq_display outer bounds are initialized in setup(); inner bounds are computed locally using M
+		// (no outer assignment here to keep setup() as the single source of layout)
 		if(!show_seq) return
 
 		const N = this.notes_sequence.length
-		let x_step = (seq_display.x3 - seq_display.x0 - 2 * M) / (N - 1)
+		const inner_x0 = seq_display.x0 + M
+		const inner_x1 = seq_display.x1 - M
+		const inner_y0 = seq_display.y0 + M
+		const inner_y1 = seq_display.y1 - M
+		let x_step = (inner_x1 - inner_x0) / (N - 1)
 		if(swing_factor && N % 2 == 0) x_step -= (x_step * swing_factor) / N
 		const SF = (this.override_OTP == 1) ? 1 : 0.5
 		const min_f = Math.min(...this.notes_sequence)
 		const max_f = Math.max(...this.notes_sequence)
 		const f_span = max(1, max_f - min_f)
-		const y_step = (seq_display.y3 - seq_display.y0 - 2 * M) / f_span
+		const y_step = (inner_y1 - inner_y0) / f_span
 		const diam = min(x_step * 1.5, y_step * 1.2, 1.8 * M) * 0.9
 		seq_display.diam = diam * 0.75
     const wt2 = min(5 * SF * 15 * U / 350, diam * 0.5)
-
+		
 		let x_step1, x_step2
 		
 		if(swing_factor){
 			x_step1 = x_step * (1 + swing_factor)
 			x_step2 = x_step * (1 - swing_factor)
+			// console.log((1 + swing_factor)/(1 - swing_factor))
 		}
 		
 		if(playing_note_index == null){ // update the whole sequence chart
-			let x = seq_display.x1
+			let x = inner_x0
 			
 			push()
 			fill(255)
 			noStroke()
 			rectMode(CORNERS)
 			strokeCap(ROUND)
-			rect(seq_display.x0 - 1, seq_display.y0 - 1, seq_display.x3 + 1, seq_display.y3 + 1)
+			rect(seq_display.x0 - 1, seq_display.y0 - 1, seq_display.x1 + 1, seq_display.y1 + 1) // clear old chart
 			stroke(30)
 			const wt1 = min(30 * SF * U / 350, diam * 0.15)
 
 			strokeWeight(wt1)
 			fill(30)
 
+			if(sheet_music_display_mode && chart){
+				// this.note_positions = []
+				let x_pos, x_spacing_1, x_spacing_2
+				if(scale_pattern.length == 12){
+					x_pos = U * 0.32
+					x_spacing_1 = U * 1.19
+					x_spacing_2 = U * 0.79
+				}
+				else{ 
+					x_pos = U * 0.35
+					x_spacing_1 = U * 1.25
+					x_spacing_2 = U * 0.85
+				}
+				// console.log(str(x_pos) + ' ' + millis())
+				let previous_note_display_name = ''
+				strokeWeight(round(U * 0.04))
+				stroke(0)
+				for(let i = 0; i < 5; i++){ // staff lines
+					const y_pos_line = staff_dims.y_pos_staff - i * staff_dims.S
+					line(~~(seq_display.x0 - 1), ~~y_pos_line, ~~(seq_display.x1 - M), ~~y_pos_line)
+				}
+				for(let note of this.octave_scale_notes){
+					const note_display_name	= note.note_display_name
+					let natural = false
+					if(previous_note_display_name.length == 2 && previous_note_display_name[0] == note_display_name){
+						natural = true
+					}
+					const x_spacing = (natural || note_display_name.length > 1) ? x_spacing_1 : x_spacing_2
+					x_pos += x_spacing
+					note.x_pos = x_pos
+					note.generate_engraving(false, false, x_pos, natural)
+					previous_note_display_name = note_display_name
+if(x_pos > inner_x1) break
+				}
+				pop()
+				return 
+			} 
+
 			let col3 = color(...col2, 170)
 			let col4 = color(...col1, 170)
-			let count = 0
-			const y_avg = (seq_display.y0 + seq_display.y3) / 2
+			let sequence_note_count = 0
+			const y_avg = seq_display.ym
 
 			// horizontal grid lines
-			for (let y = seq_display.y1; y <= seq_display.y3 - M/2; y += y_step) {
-				line(seq_display.x1, y, seq_display.x2, y)
+			for (let y = inner_y0; y <= inner_y1 + 1; y += y_step) {
+				line(inner_x0, y, inner_x1, y)
 			}
 
 			let y_oct1 = 0
 			let y_oct2 = 0
+
 			// vertical grid lines
-
-
-			while(x <= seq_display.x3 - M/2) {
-				const f = this.notes_sequence[min(count, this.notes_sequence.length - 1)]
-				const y = map(f, max_f, min_f, seq_display.y1, seq_display.y2)
-				line(x, seq_display.y1, x, seq_display.y2)
+			while(x <= inner_x1 + 1) {
+				const f = this.notes_sequence[min(sequence_note_count, this.notes_sequence.length - 1)]
+				const y = map(f, max_f, min_f, inner_y0, inner_y1)
+				line(x, inner_y0, x, inner_y1)
 				push()
 				if (f % scale_pattern.length == 0) {
 					fill(col3)
@@ -979,11 +1019,11 @@ class fingering_chart {
 					stroke(col3)
 					strokeWeight(wt2)
 					if(y <= y_avg && y != y_oct1){
-						line(seq_display.x1, y, seq_display.x2, y)
+						line(inner_x0, y, inner_x1, y)
 						y_oct1 = y
 					}
 					if(y > y_avg && y != y_oct2){
-						line(seq_display.x1, y, seq_display.x2, y)
+						line(inner_x0, y, inner_x1, y)
 						y_oct2 = y
 					}
 					pop()
@@ -996,40 +1036,40 @@ class fingering_chart {
 				circle(x, y, diam)
 				pop()
 				if(swing_factor){
-					if(count % 2 == 0) x += x_step1
+					if(sequence_note_count % 2 == 0) x += x_step1
 					else x += x_step2
 				}
 				else x += x_step
-				count++
+				sequence_note_count++
 			}
 			pop()
 			update_seq_display = false
 			sequence_chart_buffer = better_get(~~seq_display.x0, ~~seq_display.y0, seq_display.w, seq_display.h)
 		}
 		else{ // only update the playing note
-
+			if(sheet_music_display_mode) return
 			image(sequence_chart_buffer, ~~seq_display.x0, ~~seq_display.y0, seq_display.w, seq_display.h)
 			push()
 			const pni = playing_note_index
 			const npni = next_playing_note_index
-			seq_display.x = seq_display.x1 + pni * x_step
-			seq_display.x_next = seq_display.x1 + npni * x_step
+			seq_display.x = inner_x0 + pni * x_step
+			seq_display.x_next = inner_x0 + npni * x_step
 			if (swing_factor){
 				if(pni % 2 == 1) seq_display.x += x_step * swing_factor
 				else seq_display.x_next += x_step * swing_factor
 			}
-			if(seq_display.x_next > seq_display.x3 || seq_display.x_next < seq_display.x0 || !chart.started){
+			if(seq_display.x_next > seq_display.x1 || seq_display.x_next < seq_display.x0 || !chart.started){
 				seq_display.x_diff = 0
 			} 
 			else seq_display.x_diff = seq_display.x_next - seq_display.x
 			let f = this.notes_sequence[min(pni, this.notes_sequence.length - 1)]
 			if(isNaN(f)) f = 0
-			seq_display.y = map(f, max_f, min_f, seq_display.y1, seq_display.y2)
+			seq_display.y = map(f, max_f, min_f, inner_y0, inner_y1)
 			if(chart.dir == 1) stroke(255,80,50,120)
 			else stroke(50,80,255,120)
 			strokeWeight(wt2)
 			strokeCap(ROUND)
-			line(seq_display.x, seq_display.y1, seq_display.x, seq_display.y2)
+			line(seq_display.x, inner_y0, seq_display.x, inner_y1)
 			pop()
 			push()
 			let COL

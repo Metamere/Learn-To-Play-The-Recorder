@@ -46,7 +46,8 @@ let nominal_vol, nominal_drone_vol, vol, drone_vol, effects_volume_compensation
 let effects_on
 const default_dry_wet_ratio = 0.2
 let dry_wet_ratio
-let default_sharp = false // if true, defaults to sharp when the key signature has 6 accidentals.
+let default_sharp // if true, defaults to sharp when the key signature has 6 accidentals.
+let default_default_sharp = false
 let note_count = 12 // try it with a different number than 12 if you want to hear something new and different.
 /* 12 tone equal temperament (12-TET) with A at 440 Hz is the standard Western culture tuning
 Setting it to 5 will give 5-TET, a cool Slendro scale, often used on the Balinese Gamelan. 
@@ -95,6 +96,10 @@ let playing_paused = false
 let	mode_shift_reference_index
 let mode_shift_temp_index = null
 let selected_note, selected_index, selected_key_name
+let sheet_music_display_mode
+let default_sheet_music_display_mode = false
+let persistent_dots
+let default_persistent_dots_state = false
 
 // Sequence display long-press state
 let seq_press_start = 0
@@ -197,7 +202,10 @@ function preload() {
 	stored_condensed_notes_state = lookup_item("condensed_notes_state", false)
 	stored_hide_fingering_state = lookup_item("hide_fingering_state", false)
 	stored_display_waveform_state = lookup_item("display_waveform_state", display_waveform)
+	persistent_dots = lookup_item("persistent_dots", default_persistent_dots_state)
+	sheet_music_display_mode = lookup_item("sheet_music_display_mode", default_sheet_music_display_mode)
 	display_staff = note_count == 12 ? lookup_item("display_staff_state", display_staff) : false
+	default_sharp = lookup_item("default_sharp", default_default_sharp)
 	tuning = lookup_item("tuning", default_tuning)
 	sequence_number = lookup_item("sequence_number", default_sequence_number)
 	octaves_to_play = lookup_item("octaves_to_play", default_octaves_to_play)
@@ -257,7 +265,8 @@ function setup(initial=true) {
 		U = min(int(W / 31), int(H / 17))
 	}
 
-	y_move_amount = U * 2.5
+	y_move_amount1 = U * 1.5
+	y_move_amount2 = U * 2.5
 	H_scale = H / 1800
 
 	debug_indicator_location = [10.5 * U, 4.5 * U]
@@ -279,6 +288,34 @@ function setup(initial=true) {
 		L = W 
 	}
 	text_size2 = int(U * 0.85)
+
+	// staff dimensions
+	staff_dims = { }
+	staff_dims.x0 = int(U * 14.4)
+	staff_dims.y0 = int(U * 0.9)
+	staff_dims.M = U * 0.15
+	staff_dims.M2 = staff_dims.M/2
+	staff_dims.xm = int(staff_dims.x0 + U) // slightly further right to account for accidentals
+	staff_dims.w = int(U * 1.55)
+	staff_dims.h = int(U * 5.5)
+	staff_dims.S = int(U * 0.4)
+	staff_dims.x1 = int(staff_dims.x0 + staff_dims.w)
+	staff_dims.y1 = int(staff_dims.y0 + staff_dims.h)
+	staff_dims.ym = int(staff_dims.y0 + staff_dims.h / 2)
+	staff_dims.y_pos0 = int(staff_dims.y1 - staff_dims.M - U * 1.5)
+	staff_dims.wt = max(1, round(U * 0.04))
+	pattern_area = {x1: U * 1.5, x2: U * 13.25}
+	
+	// sequence display outer bounds (upper-left x0,y0 and lower-right x1,y1)
+	seq_display.x0 = chart_x2 - 13.5 * U
+	seq_display.y0 = 0.75 * U
+	seq_display.x1 = chart_x2 + 0.1 * U
+	seq_display.y1 = chart_y - 1.55 * U
+	seq_display.w = int(seq_display.x1 - seq_display.x0)
+	seq_display.h = int(seq_display.y1 - seq_display.y0)
+	seq_display.xm1 = int(seq_display.x0 + seq_display.w / 3)
+	seq_display.xm2 = int(seq_display.x0 + seq_display.w * 2 / 3)
+	seq_display.ym = int((seq_display.y0 + seq_display.y1) / 2)
 
 	if(initial){
 
@@ -536,15 +573,19 @@ function key_shift(input_note=null){
 		}
 	}
 
-	if(key_name_temp == selected_note.note_name && !mode_shifted){
-		// if((mode_scale_type == 'Major' && intial_selected_note.note_name == 'F♯ G♭') ||
-			 // (mode_scale_type == 'minor' && intial_selected_note.note_name == 'D♯ E♭')) default_sharp = !default_sharp		
-		default_sharp = !default_sharp
+	if(key_name_temp == selected_note.note_name && !mode_shifted){	
+		if((mode_scale_type == 'Major' && selected_note.note_name == 'F♯ G♭') ||
+		(mode_scale_type == 'minor' && selected_note.note_name == 'D♯ E♭')){
+			default_sharp = !default_sharp		
+			storeItem("default_sharp", default_sharp)
+		} 
+		else return
 	}
 	frequency = selected_note.frequency
 	update_chart = true
 	key_name = selected_note.note_name
 	if(!mode_shifted) update_key()
+	// console.log('key shifted to ' + selected_note.note_display_name)
 	return
 }
 
@@ -867,6 +908,28 @@ function generate_scale_pattern_representation(x_move = 0){
 		textSize(U)
 		text(scale_pattern.length, step_width * 12.35, y_pos2)
 	}
+
+	if(persistent_dots){
+		noStroke()
+		const x_start = x_move
+		const step_width = U * 0.95
+		const diam = step_width * 0.33
+		const notes = chart.octave_scale_notes
+		const len = notes.length
+		fill(col1)
+		for(let i = 1; i < len; i++){
+			if(i == len - 1){
+				fill(col2)
+				if(x_move >= 0) circle(x_start, y_pos3, diam)
+				if(x_move <= 0)	circle(x_start + step_width * note_count, y_pos3, diam)
+			} 
+			else{
+				const index_number = ((notes[i].index + 2 * note_count - octave_start) % note_count)
+				circle(x_start + step_width * index_number, y_pos3, diam)
+			}
+		}
+	}
+
 	pop()
 }
 
@@ -967,8 +1030,6 @@ function generate_info_display(){
 		}
 	}
 	pop()
-	// need to find first active note, first octave start, second octave start, third octave start if present.
-	// make a list of the notes when updating scale, mode, and key. Use whichever is relevant. Color notes accordingly.
 	if(display_staff){
 		draw_staff_with_note_range()
 	}
@@ -1007,7 +1068,6 @@ function go_fullscreen(){
 
 function windowResized(){
 	// prevents phone autorotate from activating setup if you accidentally rotate into portrait mode
-	// if(!(window.innerWidth === H && window.innerHeight === W && W > H)){
 	if(!((windowWidth === H && windowHeight === W) || (windowWidth === W && windowHeight === H))){
 		setup(false)
 	} 
@@ -1020,16 +1080,19 @@ document.addEventListener("touchMoved", (event) => event.stopPropagation(), "tru
 
 function update_effects_controls(control_value){
 	const y1 = 3.5 * U
-	const y2 = y1 + min(H - y1 - U, 13 * U)
+	const y2 = y1 + min(H - y1 - U, 12 * U)
 	control_value = min(control_value, y2)
 	push()
 	image(img, 0, img_y, img_w, img_h)
-	fill(255,255,230,100)
+	fill(255,255,230,180)
 	rectMode(CORNERS)
 	w1 = 1.45 * U
 	rect(0, y1, w1, y2)
 	if(control_value){
 		dry_wet_ratio = round(constrain(sq(map(control_value, y1, y2, 1, 0)), 0, 1),3)
+		if(midi_output_enabled){
+			main_output_channel.sendControlChange('modulationwheelcoarse', int(dry_wet_ratio * 127))
+		} 
 		update_volumes()
 	}
 	const y3 = lerp(y2, y1, sqrt(dry_wet_ratio))
@@ -1072,17 +1135,27 @@ let	key_shift_primed = false
 let	x_start = 0
 let y_start = 0
 let staff_display_toggle_primed = false
+let sheet_music_display_toggle_primed = false
+let staff_y_half = 0
+let staff_previous_y_half = 0
+let sequence_y_half = 0
+let sequence_previous_y_half = 0
+let sequence_x_third = 0
 let sequence_change_primed = false
 let sequence_control_change_primed = false
 let sequence_display_toggle_primed = false
+let persistent_dots_toggle_primed = false
 let direction_change_tracking_right = 0
 let direction_change_tracking_left = 0
 let y_move_dir = 0
+let staff_toggle_direction = 0
+let toggle_button
 
 function input_pressed(){
 	not_dragged = true
 	x_start = mouseX
 	y_start = mouseY
+	y_move_dir = 0
 	if(!audio_started){
 		userStartAudio()
 		audio_started = true
@@ -1093,27 +1166,36 @@ function input_pressed(){
 		toggle_waveform_display()
 		return
 	}
-	const in_seq_area = in_seq_display(mouseX, mouseY)
-	if(in_seq_area){
+	sequence_x_third = in_seq_display(false)
+	sequence_y_half = in_seq_display()
+	if(sequence_y_half){
 		seq_press_start = ~~millis()
 		sequence_display_toggle_primed = true
-		sequence_change_primed = in_seq_area
-		sequence_control_change_primed = true
+		sequence_change_primed = sequence_y_half
+		sequence_previous_y_half = sequence_y_half
+		sequence_control_change_primed = chart.playing_scale && sequence_change_primed == 2
 		return
 	}
-	else if(in_pattern_representation(mouseX, mouseY) && note_count == 12){
+	else if(in_pattern_representation() && note_count == 12){
 		pattern_mode_shift_primed = true
+		persistent_dots_toggle_primed = true
 		return
 	}
-	else if(in_staff_display(mouseX, mouseY)){
-		key_shift_primed = true
-		staff_display_toggle_primed = true
-		return
+	else{
+		staff_y_half = in_staff_display()
+		if(staff_y_half){
+			key_shift_primed = true
+			staff_display_toggle_primed = true
+			sheet_music_display_toggle_primed = true
+			staff_toggle_direction = 0
+			staff_previous_y_half = staff_y_half
+			return
+		}
 	}
 
 	if(instrument_types_shown || midi_outputs_shown) return
 
-	if(!in_effects_control_area(mouseX, mouseY)){
+	if(!in_effects_control_area()){
 		if(effects_controls){
 			effects_controls = false
 			image(img, 0, img_y, img_w, img_h)
@@ -1129,67 +1211,78 @@ function input_dragged(){
 	// cancel sequence long-press if the user moves significantly while pressing
 	const x_move = int(mouseX - x_start)
 	const y_move = int(mouseY - y_start)
-	not_dragged = (abs(x_move) < U * 0.5 && abs(y_move) < U * 0.5)
+	const x_dragged = abs(x_move) > U * 0.5
+	const y_dragged = abs(y_move) > U * 0.5
+	not_dragged = !x_dragged && !y_dragged
+	if(x_dragged || y_dragged) sequence_display_toggle_primed = false
 	let x_move_dir = 0
-	if(sequence_change_primed || sequence_control_change_primed){
-		// small movement tolerance based on UI unit `U`
-		const x_step = U * 1.3
+	
+	if(sequence_control_change_primed && x_dragged){
+		sequence_change_primed = false
+		let current_x_third = in_seq_display(false)
+		if(current_x_third != sequence_x_third){
+			const temp_dir_override = dir_override
+			if(current_x_third == 3){
+				if(dir_override != 1)	direction_mode_switch(1)
+			}
+			else if(current_x_third == 2){
+				if(dir_override != 2)	direction_mode_switch(2)
+			}
+			else if(current_x_third == 1){
+				if(dir_override != -1) direction_mode_switch(-1)
+			}
+			else if(current_x_third == 0){
+				if(dir_override != 0) direction_mode_switch(0)
+			}
+			sequence_x_third = current_x_third
+			if(dir_override != temp_dir_override) return
+		}
+	}
+	else if(sequence_change_primed){
+		const x_step = U * 1.15
 		if(x_move > x_step) x_move_dir = 1
 		else if (x_move < -x_step) x_move_dir = -1
 		if(x_move_dir){
 			x_start += x_step * x_move_dir
-			sequence_display_toggle_primed = false
-			if((chart.playing_scale || playing_paused) && sequence_change_primed != 1){
-				sequence_change_primed = false
-				if(x_move_dir == 1)	direction_change_tracking_right++
-				else direction_change_tracking_left++
-				if(direction_change_tracking_right > 4 && direction_change_tracking_left > 4){
-					direction_mode_switch(2)
-					direction_change_tracking_right = direction_change_tracking_left = 0
-				} 
-				else if(direction_change_tracking_right > 4){
-					if(dir_override != 1){
-						direction_mode_switch(1)
-						direction_change_tracking_right = 0
-					}
-				}
-				else if(direction_change_tracking_left > 4){
-					if(dir_override != -1){
-						direction_mode_switch(-1)
-						direction_change_tracking_left = 0
-					}
-				}
+			if(sequence_y_half == 2){
+				sequence_number = constrain(sequence_number + x_move_dir, 1, 17)
+				update_sequence(sequence_number)
 			}
-			else if(sequence_change_primed){
-				if(sequence_change_primed == 2){
-					sequence_number = constrain(sequence_number + x_move_dir, 1, 17)
-					update_sequence(sequence_number)
+			else if(sequence_y_half == 1) {
+				const temp_swing_factor = swing_factor
+				let increment = 0.05
+				if(x_move_dir < 0){
+					if(swing_factor <= 0.1 && swing_factor > -0.1) increment = 0.1
 				}
-				else {
-					swing_factor = round(constrain(swing_factor + x_move_dir * 0.05, -0.5, 0.5), 2)
-					update_swing()
-				}
+				else if(swing_factor >= -0.1 && swing_factor < 0.1) increment = 0.1
+				swing_factor = round(constrain(swing_factor + x_move_dir * increment, -0.5, 0.5), 3)
+				if(swing_factor != temp_swing_factor) update_swing()
 			}
 		}
-		if(y_move > y_move_amount) y_move_dir = 1
-		else if (y_move < -y_move_amount) y_move_dir = -1
+		if(y_move > y_move_amount1) y_move_dir = 1
+		else if (y_move < -y_move_amount1) y_move_dir = -1
 		if(y_move_dir){
-			y_start += y_move_amount * y_move_dir
-			sequence_display_toggle_primed = false
-			if(chart.playing_scale || playing_paused){
-				sequence_change_primed = false
-				toggle_loop_mode()
-			}
-			else if(sequence_change_primed){
-				if(y_move_dir == 1) set_octaves_to_play(1)
-				else set_octaves_to_play(2)
+			y_start += y_move_amount1 * y_move_dir
+			sequence_y_half = in_seq_display()
+			if (sequence_y_half && sequence_y_half !== sequence_previous_y_half){
+				sequence_previous_y_half = sequence_y_half
+				sequence_display_toggle_primed = false
+				if(chart.playing_scale || playing_paused){
+					sequence_change_primed = false
+					toggle_loop_mode()
+				}
+				else if(sequence_change_primed && (!sheet_music_display_mode || sequence_slider_shown)){
+					if(sequence_y_half == 2) set_octaves_to_play(1)
+					else set_octaves_to_play(2)
+				}
 			}
 			y_move_dir = 0
 		}
 		return
 	}
 	if(effects_controls) update_effects_controls(mouseY)
-	else if(pattern_mode_shift_primed){
+	else if(pattern_mode_shift_primed){ // && !not_dragged){
+		persistent_dots_toggle_primed = false
 		const pattern_width = int(U * 11)
 		const shift_increment = pattern_width / 12
 		const snap_dist = shift_increment / 4
@@ -1215,19 +1308,42 @@ function input_dragged(){
 		}
 		return
 	}
-	else if(key_shift_primed){
-		if(x_move > U) x_move_dir = 1
-		else if (x_move < -U) x_move_dir = -1
-		if(x_move_dir){
-			x_start += x_move_dir * U
-			let key_index = notes_arr.findIndex(x => x === key_name)
-			// chart.accidental_counts[(key_index + mode_shift) % notes_arr.length] = str(accidental_count) + chart.accidental_type
-			key_index = (key_index + x_move_dir + notes_arr.length) % notes_arr.length
-			key_name = notes_arr[key_index]
-			update_key()
-			staff_display_toggle_primed = false
+	else if(staff_display_toggle_primed || sheet_music_display_toggle_primed || key_shift_primed){
+		// console.log(staff_display_toggle_primed, sheet_music_display_toggle_primed, key_shift_primed )
+		if(sheet_music_display_toggle_primed){
+			if(y_move > y_move_amount1) y_move_dir = 1
+			else if (y_move < -y_move_amount1) y_move_dir = -1
+			if(y_move_dir){
+				y_start += y_move_amount1 * y_move_dir
+				staff_y_half = in_staff_display()
+				if (staff_y_half && staff_y_half !== staff_previous_y_half){
+					sheet_music_display_mode = !sheet_music_display_mode
+					set_show_seq()
+					storeItem("sheet_music_display_mode", sheet_music_display_mode)
+					staff_previous_y_half = staff_y_half
+					staff_display_toggle_primed = false
+				}
+				y_move_dir = 0
+				return
+				// cancel key-shift priming once a deliberate vertical drag has been detected
+				// key_shift_primed = false
+			}
 		}
-		return
+		if(key_shift_primed){
+			if(x_move > U) x_move_dir = 1
+			else if (x_move < -U) x_move_dir = -1
+			if(x_move_dir){
+				x_start += x_move_dir * U
+				let key_index = notes_arr.findIndex(x => x === key_name)
+				// chart.accidental_counts[(key_index + mode_shift) % notes_arr.length] = str(accidental_count) + chart.accidental_type
+				key_index = (key_index + x_move_dir + notes_arr.length) % notes_arr.length
+				key_name = notes_arr[key_index]
+				update_key()
+				staff_display_toggle_primed = false
+				// sheet_music_display_toggle_primed = false
+				return
+			}
+		}
 	}
 	else if(mode_shift_temp_index != null && draggable){
 		if(mouseY < chart.above) mode_shift_temp_index = null
@@ -1290,7 +1406,8 @@ function input_released() {
 		effects_controls_primed = false
 		return
 	}
-	else if(not_dragged && !sequence_change_primed && !sequence_control_change_primed && !key_shift_primed && !pattern_mode_shift_primed && !instrument_types_shown && 
+	else if(not_dragged && !sequence_change_primed && !sequence_control_change_primed && !key_shift_primed 
+		&& !sheet_music_display_toggle_primed && !pattern_mode_shift_primed && !instrument_types_shown && 
 		mouseY > chart_above && mouseY < chart_y && mouseX > chart_x && mouseX < chart_end
 		&& !(mode_mode == 'parallel' && (mode_shifted || (condensed_notes && abs(mouseX - x_start_temp) > U))) ){
 		key_shift()
@@ -1304,18 +1421,27 @@ function input_released() {
 	effects_controls_primed = false
 	sequence_change_primed = false
 	sequence_control_change_primed = false
-	if(pattern_mode_shift_primed){
+	sheet_music_display_toggle_primed = false
+	if(persistent_dots_toggle_primed && not_dragged){
+		persistent_dots = !persistent_dots
+		storeItem("persistent_dots", persistent_dots)
+		generate_scale_pattern_representation(0)
+		persistent_dots_toggle_primed = false
+		pattern_mode_shift_primed = false
+	}
+	else if(pattern_mode_shift_primed){
 		generate_scale_pattern_representation()
 		pattern_representation_captured = false
+		persistent_dots_toggle_primed = false
 		pattern_mode_shift_primed = false
 		return
 	}
-	else if(staff_display_toggle_primed){
+	else if(staff_display_toggle_primed && not_dragged){
 		toggle_staff_display()
 		staff_display_toggle_primed = false
 		return
 	} 
- 	if(chart && chart.playing_scale == false){
+	if(chart && chart.playing_scale == false){
 		playing = false
 		if (pressed_note != null){
 			pressed_note.release()
@@ -1406,22 +1532,17 @@ function save_chart(){
 	}
 
 	let key_index = notes_arr.findIndex(x => x === key_name)
-	// console.log(key_index)
-	// const condense_toggle_required = condense_notes
 	for(let count = 0; count < total_keys; count++){
 		const final = (count == total_keys - 1)
-		// if(condense_toggle_required) condensed_notes_toggle()
 		key_index = (key_index + 1 + notes_arr.length) % notes_arr.length
 		key_name = notes_arr[key_index]
 		update_key(final, !final)
-		// if(condense_toggle_required) condensed_notes_toggle()
 		
 		let key_chart = better_get(dims[0],dims[1], dims[2], dims[3])
 
 		const x = (W1 + margin) * int(count / rows)
 		const y = (H1 + margin) * (count % rows)
 		full_chart.image(key_chart, ~~x, ~~y, W1, H1)
-		// break
 	}
 	let save_str
 	if(mode_shift == 0 || mode_select.value().indexOf('·') == -1) save_str = scale_name
@@ -1568,14 +1689,14 @@ function toggle_staff_display(){
 	if(!display_staff){
 		fill(255)
 		rectMode(CORNERS)
-		const x0 = chart.sd.x0
-		const y0 = chart.sd.y0
-		const M2 = chart.sd.M2
-		const x1 = chart.sd.x1
-		const y3 = chart.sd.y3
+		const x0 = staff_dims.x0
+		const y0 = staff_dims.y0
+		const M2 = staff_dims.M2
+		const x1 = staff_dims.x1
+		const y1 = staff_dims.y1
 
-		rect(x0 - M2, y3 - M2, x1 + M2, y0 + M2) // clear staff area
-		rect(x0 - 1.2 * U, y3 + U, x0, y0)  // clear clef area
+		rect(x0 - M2, y0 - M2, x1 + M2, y1 + M2) // clear staff area
+		rect(x0 - 1.2 * U, y0, x0, y1)  // clear clef area
 	}
 	else draw_staff_with_note_range()
 	pop()
@@ -1590,9 +1711,9 @@ function set_show_seq(){
 			push()
 			fill(255)
 			rectMode(CORNERS)
-			rect(~~seq_display.x0, ~~seq_display.y0, ~~seq_display.x3, ~~seq_display.y3)
+			rect(~~(seq_display.x0 - 2), ~~seq_display.y0, ~~seq_display.x1, ~~seq_display.y1)
 			pop()
-		}
+		} 
 	}
 	else{
 		if(typeof chart !== 'undefined' && chart.generate_sequence_display){
@@ -1601,34 +1722,48 @@ function set_show_seq(){
 	}
 }
 
-function in_effects_control_area(x, y){
+function in_effects_control_area(x = mouseX, y = mouseY){
 	if(misc_buttons_shown) return false
 	return (x <= chart_x && 3 * U <= y && y <= min(H - U, 16.5 * U))
 }
 
-function in_seq_display(x, y){
+// returns 1 if in upper half of sequence display area, 2 if in lower.
+function in_seq_display(vertical = true, x = mouseX, y = mouseY){
 	if(vol_slider_shown || drone_vol_slider_shown || tempo_slider_shown || 
 		tuning_slider_shown || save_confirm_shown){
 		return false
 	}
-	let val = (seq_display.x1 <= x && x <= seq_display.x2 && seq_display.y1 <= y && y <= seq_display.y2)
-	if(val && y > (seq_display.y1 + seq_display.y2)/2) val = 2 // for lower half
+	const a = seq_display
+	let val = 0
+	if(a.x0 <= x && x <= a.x1 && a.y0 <= y && y <= a.y1) val = 1
+	if(val == 0) return val
+	if(vertical){
+		if(y > a.ym) val = 2
+	}
+	else {
+		if(x > a.xm2) val = 3
+		else if(x > a.xm1) val = 2
+	}
 	return val
 }
 
-function in_staff_display(x, y){
+function in_staff_display(x = mouseX, y = mouseY){
 	if(tempo_slider_shown || misc_buttons_shown){
 		return false
 	}
-	return (U * 14.35 <= x && x <= U * 16 && U * 1.5 <= y && y <= U * 6.25)
+	const dims = staff_dims
+	let val
+	if(dims.x0 <= x && x <= dims.x1 && dims.y0 <= y && y <= dims.y1) val = 1
+	if(val && y > dims.ym) val = 2
+	return val
 }
 
-function in_pattern_representation(x, y){
+function in_pattern_representation(x = mouseX, y = mouseY){
 	if(tempo_slider_shown || scale_pattern.length == 12){
 		return false
 	}
 	const y_limit_factor = (misc_buttons_shown || sequence_slider_shown) ? 2.8 : 4.25
-	return (U * 1.5 <= x && x <= U * 13.25 && U <= y && y <= U * y_limit_factor)
+	return (pattern_area.x1 <= x && x <= pattern_area.x2 && U <= y && y <= U * y_limit_factor)
 }
 
 function find_note_index(){

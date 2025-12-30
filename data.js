@@ -20,13 +20,13 @@ const recorder_instruments_arr = [
 // could lowest note determine the octave number? should these have a transposition of -12?
 
 const brass_instruments_arr = [
-	{name: "Tuba", lowest: -39, shift_amount: 4, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: true}, // a.k.a. contrabass tuba
-	{name: "Euphonium", lowest: -26, shift_amount: 4, octave_offset: -1, wrap_point: 23, transposition: -2, bass_instrument: true}, // also bass trumpet
+	{name: "Tuba", lowest_octave_scale_note_index: 5, lowest: -39, shift_amount: 4, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: true}, // a.k.a. contrabass tuba
+	{name: "Euphonium", lowest_octave_scale_note_index: 5, lowest: -26, shift_amount: 4, octave_offset: -1, wrap_point: 23, transposition: -2, bass_instrument: true}, // also bass trumpet
 	// {name: "Euphonium 4-NC", lowest: -25, shift_amount: 5, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: true}, // also bass trumpet
-	{name: "Baritone BC", lowest: -26, shift_amount: 4, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: true}, // bass clef sheet music
-	{name: "Baritone TC", lowest: -26, shift_amount: 4, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: false}, // tenor clef sheet music
-	{name: "B♭ Trumpet", lowest: -15, shift_amount: 6, octave_offset: -1, wrap_point: 22, transposition: -2}, // also cornet
-	{name: "C Trumpet", lowest: -15, shift_amount: 6, octave_offset: -1, wrap_point: 22, transposition: 0}, // also cornet
+	{name: "Baritone BC", lowest_octave_scale_note_index: 5, lowest: -26, shift_amount: 4, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: true}, // bass clef sheet music
+	{name: "Baritone TC", lowest_octave_scale_note_index: 5, lowest: -26, shift_amount: 4, octave_offset: -1, wrap_point: 22, transposition: -2, bass_instrument: false}, // tenor clef sheet music
+	{name: "B♭ Trumpet", lowest_octave_scale_note_index: 3, lowest: -15, shift_amount: 6, octave_offset: -1, wrap_point: 22, transposition: -2}, // also cornet
+	{name: "C Trumpet", lowest_octave_scale_note_index: 3, lowest: -15, shift_amount: 6, octave_offset: -1, wrap_point: 22, transposition: 0}, // also cornet
 ]
 // accounting for transposition, so that for B♭ instrument, playing the same fingering for a C note on the staff makes the sound of B♭.
 

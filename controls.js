@@ -405,7 +405,7 @@ function create_controls(initial=true){
 				clearTimeout(drone_button_longpress_timer)
 			} 
 			// if it was a long press, we've already opened the menu — don't toggle the drone
-			if(!drone_button_longpressed) toggle_drone()
+			if(!drone_button_longpressed && sequence_change_primed == 0) toggle_drone()
 			
 		})
 		DRONE_button.id('DRONE')
@@ -457,12 +457,12 @@ function create_controls(initial=true){
 		SWING_info = createButton(swing_factor)
 		SWING_info.id('SWING')
 		SWING_info.mousePressed(toggle_swing)
-		SWING_info.style("font-size", min(button_h, int(U * (0.75 + 0.5 * mobile))) + "px")
 		SWING_info.style("text-align", "left")
-		SWING_info.style("padding-left", U * 0.2 + "px")
 	}
+	SWING_info.style("padding-left", U * 0.2 + "px")
+	SWING_info.style("font-size", scl_L + "px")
 	SWING_info.position(27 * U, control_y)
-	SWING_info.size(U * 2.1, U * 0.9)
+	SWING_info.size(U * 2.1, U * 0.85)
 
 	const y_seq = U * 2.85
 
@@ -851,13 +851,13 @@ function set_play_button_chars(){
 	let direction_chars
 	PLAY_button.style('border', '1px solid #000')
 	if(dir_override == 0){
-		direction_chars = chart.reversal ? '◀ ▶' : '▶'
+		direction_chars = chart.reversal ? '◀ ▶' : '&nbsp;&nbsp;&nbsp; ▶'
 	}
 	else{
 		if(dir_override == 2) direction_chars = '◀ ▶'
-		else if(dir_override == 1) direction_chars = '▶'
+		else if(dir_override == 1) direction_chars = '&nbsp;&nbsp;&nbsp;&nbsp; ▶'
 		else{
-			direction_chars = '◀'
+			direction_chars = '◀&nbsp;&nbsp;&nbsp;'
 
 		} 
 		if(dir_override == 2 || dir_override == -1) PLAY_button.style('border-left', '0.5vw solid #614522ff')

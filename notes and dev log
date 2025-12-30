@@ -318,11 +318,34 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 	- added a swing factor control, drag left or right in the sequence display top half
 	(bottom half only for sequence number now or playback control now)
 	- made the sequence display show a continuous position indicator when the tempo is less than 120 bpm.
-
+12-24-25
+	- fixed issue with sequence timing on devices with different framerate
+	- fixed issue with swing info styles on mobile
+	- allowed for midi control change for mod wheel using the effects control slider
+12-27-25
+	- added a sheet music notation mode for the scales. 
+	Toggle between the two modes by dragging up and down in the staff display area.
+	- fixed issue with flat notes not displaying the correct note on the staff display.
+12-29-25
+	- added a toggle for pattern representation dots. 
+	It is ither static dots at the intervals, or dynamic on pressed note location(s)
+	- added a lower limit for scale octave positions for scale sheet music display for 
+	brass instruments to make them more useful.
+	- added highlight to key notes for engraving
+	- made notes a bit fancier, made lines more stable and sharp by using 
+	int() for positions and round() for line weights (with min of 1).
+	- prevent drone from being turned on accidentally when dragging right in sequence display.
+	- limited swing to skip -0.05 or 0.05 as those aren't very noticeable or useful.
+12-30-25
+	- refactored staff and sequence dimensions to make things more consistent and clear, 
+	and moved many calcs to setup to make more efficient. 
+	- improved drag controls for play direction. Now the different overrides correspond
+	to the horizontal thirds of the chart, and dragging outside of the chart will remove
+	the direction override.
+	- drag controls for staff and sequence were also improved. Dragging from one portion
+	to another is more consistent and predictable than having it depend on a certain movement amount.
 
 To-do:
-- refine the sequence wait time for start/end, when repeating and/or reversing, etc. 
-Maybe a rest symbol control button that adds or removes the rests, or changes the length.
 - add midi channel selection options, since it's possible to send melody or drone 
 on any/all of the 16 available channels. Add midi auto-connect feature. Will need to save connection device and channel preferences.
 - prevent midi note re-trigger when moving to a new note if the pitch has been bent such that it is very close to the new note.
