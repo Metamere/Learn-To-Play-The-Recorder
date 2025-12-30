@@ -903,6 +903,7 @@ function generate_scale_pattern_representation(x_move = 0){
 		circle(x_pos2, y_pos3, diam2)
 	}
 	if(scale_pattern.length < 10 && note_count == 12){
+		// display the number of notes in the scale except for chromatic
 		fill(num_col)
 		textAlign(LEFT, BOTTOM)
 		textSize(U)
@@ -1005,7 +1006,6 @@ function generate_info_display(){
 		const total_length = textWidth(key_sig + scale_name_str + scale_acc_str) / U
 		if(total_length > 10) separator_str2 = '·'
 		if(total_length > 10.6) separator_str1 = '·'
-		// console.log(total_length)
 		scale_str = `${key_sig}${separator_str1}${scale_name_str}${scale_acc_str ? separator_str2 + scale_acc_str : ''}`
 		shift = 1.2
 	}
@@ -1696,7 +1696,7 @@ function toggle_staff_display(){
 		const y1 = staff_dims.y1
 
 		rect(x0 - M2, y0 - M2, x1 + M2, y1 + M2) // clear staff area
-		rect(x0 - 1.2 * U, y0, x0, y1)  // clear clef area
+		rect(x0 - 1.2 * U, y0 + U, x0, y1) // clear clef area
 	}
 	else draw_staff_with_note_range()
 	pop()

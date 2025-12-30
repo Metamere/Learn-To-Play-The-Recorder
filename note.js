@@ -453,11 +453,11 @@ class note {
 		if(draw_staff){
 			noStroke()
 			fill(255)
-			rectMode(CORNERS) 
-			rect(x0 - M2, y1 - M2, x1 + M2, y0 + M2) // clear staff area
+			rectMode(CORNERS)
+			rect(x0 - M2, y0 - M2, x1 + M2, y1 + M2) // clear staff area
 
 			push()  // draw clef symbol
-				rect(x0 - 1.2 * U, y1, x0, y0)  // clear clef area
+				rect(x0 - 1.2 * U, y0 + U, x0, y1)  // clear clef area
 				fill(0)
 				if(chart.bass_instrument){ 
 					// scaled_text('𝄢', U * 1.2, x0 - U * 0.65, y_pos_staff - U * 1.75)
