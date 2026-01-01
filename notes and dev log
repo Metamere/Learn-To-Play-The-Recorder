@@ -344,8 +344,17 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 	the direction override.
 	- drag controls for staff and sequence were also improved. Dragging from one portion
 	to another is more consistent and predictable than having it depend on a certain movement amount.
+	- changed order of instruments so that highest frequencies are at top of select menu
+	- moved swing factor button to right side, resized and rearranged buttons.
+12-31-25
+	- fixed issues with save_chart for condensed notes
+	- fixed flickering issue when changing key or mode on stylo_mode
+	- added note progress line on < 120 bpm sequence display
 
 To-do:
+- add a save_charts function that will save a chart for each scale and mode for the current instrument.
+- add an option when saving a condensed chart to make it more condensed. Maybe full, condensed, and compact? 
+Can just make more buttons for the different options. Maybe one for saving a larger set, or individual key images.
 - add midi channel selection options, since it's possible to send melody or drone 
 on any/all of the 16 available channels. Add midi auto-connect feature. Will need to save connection device and channel preferences.
 - prevent midi note re-trigger when moving to a new note if the pitch has been bent such that it is very close to the new note.

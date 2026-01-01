@@ -26,7 +26,7 @@ class note {
 		// prevent the note zones from butting right up against each other, where the notes could jitter.
 		this.buffer_margin = U * 0.02
 		this.divide = divide
-		this.above = U * 1.5
+		this.above = int(U * 1.5)
 		
 		this.mid = x + w/2
 		this.is_pressed = 0
@@ -42,7 +42,7 @@ class note {
 		this.chart_index = chart_index
 		this.accidental_type = accidental_type
 		this.current_octave = int(starting_octave)
-		this.wt = int(U / 15)
+		this.wt = Math.ceil(U / 15)
 		this.dots = min(7, note_count)
 		this.note_name = str(notes_arr[this.index % note_count])
 		if(this.note_name.length > 1){
@@ -62,7 +62,6 @@ class note {
 		this.wrapped = wrapped
 		this.playable = (this.note_val > 0 && fingering_data[index].length > 0)
 		if(update_label) this.static_labels()
-		if(update_color) this.static_lines()
 		this.draw()
 		this.redraw = false
 	}
@@ -75,7 +74,7 @@ class note {
 			// clear out old label
 			fill(255)
 			rectMode(CORNERS)
-			rect(this.x + U * 0.03, this.y - chart_label_height, this.x + this.w - U * 0.03, this.y ) // top location
+			rect(this.x + Math.ceil(U * 0.023), this.y - chart_label_height, this.x + this.w, this.y ) // top location
 			pop()
 		}
 		const pos = U * 0.1
@@ -113,7 +112,7 @@ class note {
 				push()
 				if(invert){
 					stroke(0)
-					strokeWeight(U * 0.06)
+					strokeWeight(max(1, U * 0.06))
 					rect(this.mid, this.y - 1.12 * U, this.w * 0.66, U * 0.6, 0, 0, pos, pos)
 				} 
 				else rect(this.mid, this.y - 1.12 * U, this.w * 0.66, U * 0.66, 0, 0, pos, pos)
@@ -185,14 +184,16 @@ class note {
 	}
 	
 	static_lines(){ // vertical note divider lines
+		push()
 		strokeWeight(this.wt)
 		strokeCap(SQUARE)
 		stroke(this.note_color)
-		const y_start = this.y - (!this.wrapped ? this.above : 0)
+		const y_start = this.y - (!this.wrapped ? int(this.above - U * 0.06) : 0)
 		line(this.x + this.w, y_start, this.x + this.w, this.y + this.h) // vertical divider line
 		if(this.index == 0){
 			line(this.x, 2.76 * U, this.x, this.y + H)  // far left side vertical divider line (next to image)
 		}
+		pop()
 	}
 	
 	draw(){
@@ -241,18 +242,21 @@ class note {
 		let note_fingering = fingering_data[this.index]
 		noStroke()	
 		fill(COL)
-		let m1 = U * 0.065
-		let m2 = U * 0.028
-		const y_inc = chart_h * 0.125
+		const m1 = Math.ceil(U * 0.065)
+		const y0 = this.y + m1
+		const y0b = this.y + U * 0.065
+		const x0 = this.x + m1
+		const m2 = U * 0.028
+		const y_inc = int(chart_h * 0.125)
 		const empty_note = (note_fingering.length == 0)
 		if (note_count == 12 && !hide_fingering && (!this.wrapped || (this.wrapped &&
 					note_fingering.slice(0,symbol_count).toString() != fingering_data[this.index - 12].slice(0,symbol_count).toString()))){
 			let inc = 0.09 * this.is_pressed
 			push()
 			fill(255)
-			rect(this.x + m2, this.y + m1 * 1.1, this.w - m2 * 2, this.h - m1) // clear old shapes out to make it look better
+			rect(this.x + m1, y0, this.w - m1 * 2, this.h - m1) // clear old shapes out to make it look better
 			stroke(COL)
-			const wt2 = this.wt * weight_factor
+			const wt2 = max(1, this.wt * weight_factor)
 			strokeWeight(wt2)
 			strokeCap(SQUARE)
 			let m = U * 0.1
@@ -276,7 +280,7 @@ class note {
 					noStroke()
 					if(this.special_note) fill(...COL, 150)
 					else fill(COL)
-					rect(this.x + m1, y_pos + m1, this.w - 2 * m1, (this.y + this.h - this.divide - m1))
+					rect(x0, y_pos + m1, this.w - 2 * m1, (this.y + this.h - this.divide - m1))
 					pop()
 				}
 			} 
@@ -317,18 +321,20 @@ class note {
 			}
 			if(fingering_data[this.index].length == 0 && instrument_type == 'Irish whistle'){
 				// non-playable notes get filled in instead
-				rect(this.x + m1, this.y + m1, this.w - m1 * 2, this.divide - this.y)
-			} 
+				rect(x0, y0, this.w - m1 * 2, this.divide - this.y)
+			}
+			this.static_lines()
 		}
 		else{ // just a colored box instead of the fingering pattern
 			if(!stylo_mode && note_count == 12){
 				push()
 				fill(255)
-				rect(this.x + m2, this.y + m1, this.w - m2 * 2, this.h - m1) // clear old shapes out to make it look better
+				rect(this.x + m2, y0, this.w - m2, this.h - m1) // clear old shapes out to make it look better
+				this.static_lines() // redraw vertical divider line
 				pop()
 				if(this.special_note) fill(...COL, 150)
-				if(this.note_val > 0) rect(this.x + m1, this.y + this.h * 0.008, this.w - m1 * 2, this.h - m1)
-				else rect(this.x + m1, this.y + m1, this.w - m1 * 2, this.divide - this.y)
+				if(this.note_val > 0) rect(x0, this.y + this.h * 0.008, this.w - m1 * 2, this.h - m1)
+				else rect(x0, y0, this.w - m1 * 2, this.divide - this.y)
 				if(this.wrapped && !hide_fingering){
 					push()
 					fill(0,30)
@@ -340,6 +346,7 @@ class note {
 				}
 			}
 			else if(stylo_mode && note_span || note_count != 12){ 
+				const h1 = this.h * 0.99
 				if(this.is_pressed && !chart.playing_scale && !this.special_note){
 					// slight gap to indicate upper zone for staccato
 					push()
@@ -347,19 +354,26 @@ class note {
 					const y2 = this.y + 2 * U
 					const m2 = this.w * 0.1
 					fill(0,20)
-					quad(this.mid + m1, this.y + m1, this.mid - m1, this.y + m1, this.x + m2, y2, this.x + this.w - m2, y2)
+					quad(this.mid + m1, y0, this.mid - m1, y0, this.x + m2, y2, this.x + this.w - m2, y2)
 					fill(0,65)
-					rect(this.x + m1, this.y + m1, this.w - m1 * 2, 2 * U)
-					rect(this.x + m1, y2 + m1, this.w - m1 * 2, this.h * 0.99 - 2 * U)
-					pop()
+					rect(x0, y0b, this.w - m1 * 2, h1)
 				}
 				else{
 					if(this.special_note) fill(...COL, 150)
-					rect(this.x + m1, this.y + m1, this.w - m1 * 2, this.h * 0.99)
+						rect(x0, y0b, this.w - m1 * 2, h1)
 				}
+				push()
+				stroke(255)
+				strokeWeight(m1 * 2)
+				line(this.x + this.w, y0, this.x + this.w, y0 + h1) // clear vertical divider section 
+				this.static_lines() // redraw vertical divider line
+				stroke(0)
+				strokeWeight(this.wt)
+				line(this.x, y0, this.x + this.w + m1, y0)
+				pop()
 				if(!this.playable){
 					fill(255, 150)
-					rect(this.x + m1, this.divide + m1, this.w - m1 * 2, (this.y + this.h - this.divide))
+					rect(x0, this.divide + m1, this.w - m1 * 2, (this.y + this.h - this.divide))
 				} 
 				if(note_count != 12) return
 				
@@ -372,27 +386,27 @@ class note {
 					rectMode(CORNERS)
 					colorMode(HSB,70,100,100,100)
 					if(this.chart_index > 1){ // after the first note
+						const w1 = this.mid - this.w * 0.5 + m1
 						// the interval between the current and previous note
 						let I = this.index - chart.notes[constrain(this.chart_index - 2, 0, chart.notes.length - 1)].index
 						fill(interval_colors[I - 1])
-						rect(this.mid, v_pos, this.mid - this.w * 0.5 + m1, v_pos + v_spacing * I)	
+						rect(this.mid, v_pos, w1, v_pos + v_spacing * I)	
 						for(let i = 0; i < I; i++){
 							fill(0, 0, 35 * i, 10)
 							rect(this.mid, v_pos + v_spacing * i, 
-								this.mid - this.w * 0.5 + m1, 
-								v_pos + v_spacing * (i + 1))
+								w1, v_pos + v_spacing * (i + 1))
 						}
 					}
 					if(this.chart_index < chart.notes.length){ // before the last note
+						const w0 = this.mid + this.w * 0.5 - m1
 						// the interval between the current and next note
 						let I = chart.notes[constrain(this.chart_index, 0, chart.notes.length - 1)].index - this.index
 						fill(interval_colors[I - 1])
-						rect(this.mid, v_pos, this.mid + this.w * 0.5 - m1, v_pos + v_spacing * (-I))
+						rect(this.mid, v_pos, w0, v_pos + v_spacing * (-I))
 						for(i = I; i--;){
 							fill(0, 0, 35 * i, 10)
 							rect(this.mid, v_pos + v_spacing * (i - I),
-								this.mid + this.w * 0.5 - m1,
-								v_pos + v_spacing * (i - I + 1)
+								w0,	v_pos + v_spacing * (i - I + 1)
 							)
 						}
 					}
@@ -436,6 +450,8 @@ class note {
 	generate_engraving(draw_staff = true, ghost_note = false, x_offset = 0, natural = false){
 
 		// 𝄞 𝄢 ♯♭♮ 𝄚 ♪ 𝅘𝅥𝅮𝅘𝅥𝅗𝅥𝅝
+		const y_pos_staff = staff_dims.y_pos_staff
+		if(!y_pos_staff) return
 		const x0 = staff_dims.x0 + x_offset
 		const y0 = staff_dims.y0
 		const M = staff_dims.M
@@ -445,7 +461,6 @@ class note {
 		const S = staff_dims.S
 		const x1 = staff_dims.x1 + x_offset
 		const y1 = staff_dims.y1
-		const y_pos_staff = staff_dims.y_pos_staff
 		const y_pos = int(y_pos_staff + S - this.y_note_index * S * 0.5 + chart.bass_instrument * S)
 		const wt = staff_dims.wt
 

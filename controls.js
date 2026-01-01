@@ -20,21 +20,22 @@ let octaves_changed = false
 let save_confirm_shown = false
 let reverse_mode_switched = false
 let img_w, img_h, img_y
+let scl2
 let drone_button_longpress_timer = null
 let drone_button_longpressed = false
 let MIDI_OUTPUT_button = false
 
 function create_controls(initial=true){
 	inst_x = 2 * U
-	scale_x = chart_x + 4.5 * U + inst_x
-	mode_x = chart_x + 14 * U + inst_x
+	scale_x = chart_x + 5.9 * U + inst_x
+	mode_x = chart_x + 15.5 * U + inst_x
 	control_y = 0
 	
-	const button_h = int(1.65 * U)
+	const button_h = int(1.55 * U)
 	const button_w = min(4 * U, W - chart_x2)
 	const scl = int(U * 0.5)
 	const scl_L = int(U * 0.7)
-	const scl2 = min(button_h, int(U * (0.55 + 0.25 * mobile)))
+	scl2 = min(button_h, int(U * (0.55 + 0.25 * mobile)))
 
 	const text_w = int(0.25 * button_w)
 	
@@ -64,33 +65,6 @@ function create_controls(initial=true){
 	img_h = int(img.height / img.width * img_w)
 	img_y = int(chart_y - 5.25 * U)
 	image(img, 0, img_y, img_w, img_h)
-	
-	if(initial){
-		TEMPO_button = createButton(str(tempo) + ' bpm')
-		TEMPO_button.mousePressed(toggle_tempo_slider)
-		TEMPO_button.id('TEMPO')
-	}
-	TEMPO_button.size(button_w, button_h)
-	TEMPO_button.position(chart_x2, 0)
-  TEMPO_button.style("font-size", min(button_h, int(U * (0.6 + 0.27 * mobile))) + "px")
-	
-	if(initial){
-		TEMPO_slider = createSlider(20, 200, base_tempo, 1)
-		TEMPO_slider.input(function() {update_tempo(false)})
-		TEMPO_slider.hide()
-		TEMPO_slider.addClass("slider")
-		let val
-		if(tempo_multiplier < 1) val = 4 * tempo_multiplier
-		else val = tempo_multiplier + 2 
-		TEMPO_multiplier_slider = createSlider(1, 6, val, 1)
-		TEMPO_multiplier_slider.input(function() {update_tempo(true)})
-		TEMPO_multiplier_slider.hide()
-		TEMPO_multiplier_slider.addClass("slider")
-	} 
-	TEMPO_slider.position(2 * U, control_y + U)
-	TEMPO_slider.size(U * 27)
-	TEMPO_multiplier_slider.position(17.5 * U, control_y + 3.5 * U)
-	TEMPO_multiplier_slider.size(U * 10)
 	
 	if(initial){
 		HIDE_FING_button = createButton('⬤ ⬤ ⬤')
@@ -352,36 +326,73 @@ function create_controls(initial=true){
 	} 
 	TUNING_slider.position(button_w2 * 4.2, row2)
 	TUNING_slider.size(U * 17.5)
-
-	if(initial){
-		RAND_KEY_button = createButton('KEY 🔀')
-		RAND_MODE_button = createButton('MODE 🔀')
-		RAND_SCL_button = createButton('SCALE 🔀')
-		RAND_KEY_button.mousePressed(random_key)			
-		RAND_MODE_button.mousePressed(random_mode)
-		RAND_SCL_button.mousePressed(random_scale)
-		RAND_MODE_button.id('RAND_MODE')
-	} 
-	RAND_KEY_button.style("font-size", scl2 + "px")
-	RAND_KEY_button.size(button_w, button_h * 1.1)
-	RAND_KEY_button.position(chart_x2, chart_hy - 5.5 * button_h)
-	RAND_MODE_button.style("font-size", scl2 * (0.85 + 0.1 * mobile) + "px")
-	RAND_MODE_button.size(button_w, button_h * 1.1)
-	RAND_MODE_button.position(chart_x2, chart_hy - 4.4 * button_h)
-	RAND_SCL_button.style("font-size", scl2 * (0.85 + 0.1 * mobile) + "px")
-	RAND_SCL_button.size(button_w, button_h * 1.1)
-	RAND_SCL_button.position(chart_x2, chart_hy - 3.3 * button_h)
 	
 	if(initial){
+		TEMPO_button = createButton(str(tempo) + ' bpm')
+		TEMPO_button.mousePressed(toggle_tempo_slider)
+		TEMPO_button.id('TEMPO')
+	}
+	TEMPO_button.size(button_w, button_h)
+	TEMPO_button.position(chart_x2, 0)
+	let y_pos_b = button_h
+	let tempo_wt = min(button_h, int(U * (0.6 + 0.27 * mobile)))
+	TEMPO_button.style("font-size", tempo_wt + "px")
+	
+	if(initial){
+		TEMPO_slider = createSlider(20, 200, base_tempo, 1)
+		TEMPO_slider.input(function() {update_tempo(false)})
+		TEMPO_slider.hide()
+		TEMPO_slider.addClass("slider")
+		let val
+		if(tempo_multiplier < 1) val = 4 * tempo_multiplier
+		else val = tempo_multiplier + 2 
+		TEMPO_multiplier_slider = createSlider(1, 6, val, 1)
+		TEMPO_multiplier_slider.input(function() {update_tempo(true)})
+		TEMPO_multiplier_slider.hide()
+		TEMPO_multiplier_slider.addClass("slider")
+	} 
+	TEMPO_slider.position(2 * U, control_y + U)
+	TEMPO_slider.size(U * 27)
+	TEMPO_multiplier_slider.position(17.5 * U, control_y + 3.5 * U)
+	TEMPO_multiplier_slider.size(U * 10)
+	
+	if(initial){
+		SWING_info = createButton(swing_factor)
+		SWING_info.id('SWING')
+		SWING_info.mousePressed(toggle_swing)
+		SWING_info.style("text-align", "left")
+	}
+	SWING_info.style("padding-left", min(button_w * 0.3, button_w - U * 1.8) + "px")
+	SWING_info.style("font-size", tempo_wt + "px")
+	SWING_info.position(chart_x2, y_pos_b)
+	SWING_info.size(button_w, button_h)
+	y_pos_b += button_h
+
+	if(initial){
+		SEQ_SELECT_button = createButton('SEQ. 01')
+		SEQ_SELECT_button.mousePressed(toggle_sequence_slider)
+		SEQ_SELECT_button.id('SEQUENCE')
+	} 
+	SEQ_SELECT_button.style("font-size", scl2 * 1.1 + "px")
+	SEQ_SELECT_button.size(button_w, button_h)
+  SEQ_SELECT_button.position(chart_x2, y_pos_b)
+	y_pos_b += button_h
+
+	if(initial){
+		PLAY_button = createButton('PLAY')
+		PLAY_button.mousePressed(play_scale)
+		PLAY_button.id('PLAY')
+		set_play_button_chars()
+	} 
+	PLAY_button.style("font-size", scl2 + "px")
+	PLAY_button.size(button_w, button_h)
+  PLAY_button.position(chart_x2, y_pos_b)
+	y_pos_b += button_h
+
+	if(initial){
 		DRONE_button = createButton('DRONE')
-		// long-press (1s) opens misc menu and shows drone & master volume sliders
+		// long-press (1s) opens misc menu and shows drone & master volume sliders. Doesn't work on mobile though?
 		DRONE_button.mousePressed(function(){
-			// if(drone_button_longpressed){
-			// 	if(misc_buttons_shown) MISC_MENU_buttons_toggle()
-			// 	// toggle_drone()
-			// 	drone_button_longpressed = false
-			// 	return
-			// }
 
 				drone_button_longpressed = false
 				if(drone_button_longpress_timer) clearTimeout(drone_button_longpress_timer)
@@ -412,27 +423,31 @@ function create_controls(initial=true){
 	}
 	DRONE_button.style("font-size", text_w + "px")
 	DRONE_button.size(button_w, button_h)
-	DRONE_button.position(chart_x2, button_h)
+	DRONE_button.position(chart_x2, y_pos_b)
 	
 	if(initial){
-		PLAY_button = createButton('PLAY')
-		PLAY_button.mousePressed(play_scale)
-		PLAY_button.id('PLAY')
-		set_play_button_chars()
+		RAND_KEY_button = createButton('KEY 🔀')
+		RAND_MODE_button = createButton('MODE 🔀')
+		RAND_SCL_button = createButton('SCALE 🔀')
+		RAND_KEY_button.mousePressed(random_key)			
+		RAND_MODE_button.mousePressed(random_mode)
+		RAND_SCL_button.mousePressed(random_scale)
+		RAND_MODE_button.id('RAND_MODE')
 	} 
-	PLAY_button.style("font-size", scl2 + "px")
-	PLAY_button.size(button_w, button_h)
-  PLAY_button.position(chart_x2, 2*button_h)
-	
-	if(initial){
-		SEQ_SELECT_button = createButton('SEQ. 01')
-		SEQ_SELECT_button.mousePressed(toggle_sequence_slider)
-		SEQ_SELECT_button.id('SEQUENCE')
-	} 
-	SEQ_SELECT_button.style("font-size", scl2 * 1.1 + "px")
-	SEQ_SELECT_button.size(button_w, button_h)
-  SEQ_SELECT_button.position(chart_x2, 3*button_h)
-	
+	RAND_KEY_button.style("font-size", scl2 + "px")
+	RAND_KEY_button.size(button_w, button_h)
+	const remainder = chart_hy - 10 * button_h
+	y_pos_b += int(button_h + remainder / 2)
+	RAND_KEY_button.position(chart_x2, y_pos_b)
+	RAND_MODE_button.style("font-size", scl2 + "px")
+	RAND_MODE_button.size(button_w, button_h)
+	y_pos_b += button_h
+	RAND_MODE_button.position(chart_x2, y_pos_b)
+	RAND_SCL_button.style("font-size", scl2 * (0.85 + 0.1 * mobile) + "px")
+	RAND_SCL_button.size(button_w, button_h)
+	y_pos_b += button_h
+	RAND_SCL_button.position(chart_x2, y_pos_b)
+
 	if(initial){
 		PLACEHOLDER2_button = createButton(' ') // for backdrop on sequence options menu
 		PLACEHOLDER2_button.id('PLACEHOLDER2')
@@ -452,17 +467,6 @@ function create_controls(initial=true){
 	} 
 	SEQUENCE_slider.position(chart_x + 0.2 * U, control_y + 4.55 * U)
 	SEQUENCE_slider.size(U * 12.35)
-
-	if(initial){
-		SWING_info = createButton(swing_factor)
-		SWING_info.id('SWING')
-		SWING_info.mousePressed(toggle_swing)
-		SWING_info.style("text-align", "left")
-	}
-	SWING_info.style("padding-left", U * 0.2 + "px")
-	SWING_info.style("font-size", scl_L + "px")
-	SWING_info.position(27 * U, control_y)
-	SWING_info.size(U * 2.1, U * 0.85)
 
 	const y_seq = U * 2.85
 
@@ -529,7 +533,7 @@ function create_controls(initial=true){
 		shuffle(shuffled_sequence_indices, true)	
 		// shuffle_array(shuffled_sequence_indices)	
 	}
-	
+	update_sequence()
 }
 
 function mode_mode_switch(){
@@ -996,7 +1000,9 @@ function update_sequence(number = 0){
 		OCTAVES_button.style('backgroundColor', 'rgb(240,240,240)')
 		document.getElementById("OCTAVES").innerHTML = str(octaves_to_play)
 	} 
-	let seq_chars = sequence_number + ((chart.default_reversal_setting && abs(dir_override) == 1) || 
+	let seq_chars = ''
+	if(sequence_number < 10) seq_chars += '&nbsp;&nbsp;'
+	seq_chars += sequence_number + ((chart.default_reversal_setting && abs(dir_override) == 1) || 
 	(!chart.default_reversal_setting && dir_override == 2) ? '*' : '')
 	document.getElementById("SEQUENCE").innerHTML = 'SEQ. ' + seq_chars
 	if(chart.playing_scale) restart_scale(true)
@@ -1006,25 +1012,27 @@ function update_sequence(number = 0){
 	}
 }
 
-function update_swing(){
+function update_swing(zeroed_out = false){
 	storeItem("swing_factor", swing_factor)
-	document.getElementById("SWING").innerHTML = swing_factor
+	if(zeroed_out && !mobile)	document.getElementById("SWING").innerHTML = 'no swing'
+	else document.getElementById("SWING").innerHTML = swing_factor
 	update_seq_display = true
 	chart.generate_sequence()
 }
 
 let stashed_swing_factor = 0
 function toggle_swing(){
-	if(stashed_swing_factor){
+	if(swing_factor == 0 && stashed_swing_factor){
 		swing_factor = stashed_swing_factor
 		stashed_swing_factor = 0
+		update_swing()
 	} 
 	else if(swing_factor != 0){
 		stashed_swing_factor = swing_factor
 		swing_factor = 0
+		update_swing(true)
 	}
 	else return
-	update_swing()
 }
 
 function random_mode(){
@@ -1457,8 +1465,9 @@ function update_scale(initial = true, history = false){
 }
 
 function update_mode_button(){
-	if(modes_arr.length < 2){// scale_name == 'Chromatic' || scale_name == 'Whole Tone'){
+	if(modes_arr.length < 2){
 		document.getElementById("RAND_MODE").innerHTML = 'ONE MODE'
+		RAND_MODE_button.style("font-size", scl2 * (1 - 0.15 * mobile) + "px")
 		RAND_MODE_button.style('backgroundColor', 'rgb(150,140,140)')
 		MODE_INC_button.style('backgroundColor', 'rgb(150,140,140)')
 		MODE_DEC_button.style('backgroundColor', 'rgb(150,140,140)')
@@ -1466,10 +1475,12 @@ function update_mode_button(){
 	else{
 		if(modes_arr.length < 5){
 			document.getElementById("RAND_MODE").innerHTML = 'NEXT MODE'
+			RAND_MODE_button.style("font-size", scl2 * (1 - 0.2 * mobile) + "px")
 			RAND_MODE_button.style('backgroundColor', 'rgb(240,190,190)')
 		}
 		else{
 			document.getElementById("RAND_MODE").innerHTML = 'MODE 🔀'
+			RAND_MODE_button.style("font-size", scl2 + "px")
 			RAND_MODE_button.style('backgroundColor', 'rgb(240,240,240)')
 		}
 		if(!mode_mode == 'parallel'){
@@ -1525,8 +1536,14 @@ function update_key(initialize = true, update_all = true){
 	} 
 	if(update_all){
 		if(show_info) generate_info_display()
-		storeItem("key_name", key_name)
-		stored_key_name = key_name
+		// Prevent storing undefined values (can happen during rapid key cycling / save-chart)
+		if(typeof key_name !== 'undefined' && key_name != null){
+			storeItem("key_name", key_name)
+			stored_key_name = key_name
+		}
+		// else {
+		// 	console.warn('update_key: key_name is undefined — skipping storeItem.')
+		// }
 	}
 }
 

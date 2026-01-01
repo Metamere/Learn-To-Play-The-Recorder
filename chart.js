@@ -6,7 +6,7 @@ let col1 = [50, 0.2 * val, 0.5 * val] // standard highlight
 let col2 = [0.55 * val * 0.88, 0.37 * val * 0.88, 0] // octave indication //
 let col_set = [col0, col1, col2]
 
-let f_span, fingering_pattern, drone_freq
+let fingering_pattern, drone_freq
 let instrument_obj, notes_arr, scale_arr_index
 let chart_end = 0
 let scale_notes_length_temp = 0
@@ -100,44 +100,37 @@ class fingering_chart {
 	_handlePlayingScale() {
 		// increment play clock in seconds using deltaTime so timing is independent of frame rate
 		if(chart.playing_scale && !playing_paused) play_clock += deltaTime * 0.001
-		// elapsed_time = millis() * 0.001 - this.time
 		elapsed_time = play_clock - this.time
-		// Use a capped wait when the sequence hasn't started yet so very low BPM
-		// doesn't delay the initial note for too long.
-		// if (!this.started) {
-		// 	// faster tempo have longer waits, I guess the note start time and swing cause it to get eaten into.
-		// 	wait_time = constrain(this.interval_time, 0.5, 3.0) // constrain initial wait time (seconds)
-		// }
-		// else 
-			wait_time = this.interval_time // interval_time is in seconds
-		// wait_ratio = round(this.dir * (1 - (wait_time - elapsed_time)) / wait_time,3)
+		wait_time = this.interval_time // interval_time is in seconds
 		wait_ratio = round(1 - (wait_time - elapsed_time) / wait_time,3)
 		if (show_seq && !sheet_music_display_mode && tempo <= tempo_scroll_limit && this.started) {
 			this.generate_sequence_display(this.sequence_note_index, this.next_sequence_note_index)
 			push()
 			const from_x = (seq_display.x || 0)
 			const to_x = (seq_display.x || 0) + (seq_display.x_diff || 0)
-			// smooth current x between cached endpoints using wait_ratio
-			const x_current = from_x + wait_ratio * (to_x - from_x)
+			const travel_dist = (to_x - from_x)
+			const x_current = from_x + wait_ratio * travel_dist
+			const x_current2 = from_x + min(0.8, wait_ratio) * travel_dist
+
 			// draw vertical indicator line
 			if (this.dir == 1) stroke(255, 80, 50, 140)
 			else stroke(50, 80, 255, 140)
-			strokeWeight(round(max(1, (this.override_OTP == 1 ? 1 : 0.6) * U * 0.15)))
+			strokeWeight(max(1, round((this.override_OTP == 1 ? 1 : 0.6) * U * 0.15)))
 			strokeCap(ROUND)
 			const M_local = U * (0.35 - 0.1 * (this.override_OTP - 1))
 			const inner_y0 = seq_display.y0 + M_local
 			const inner_y1 = seq_display.y1 - M_local
 			if (inner_y0 != null && inner_y1 != null) line(x_current, inner_y0, x_current, inner_y1)
-
-			// draw a small highlight at the current play position
-			noStroke()
-			let f = 0
-			if (typeof this.notes_sequence !== 'undefined' && typeof this.sequence_note_index !== 'undefined') {
-				f = this.notes_sequence[min(this.sequence_note_index, this.notes_sequence.length - 1)]
+			if (seq_display.y != null){
+				let f = 0
+				if (typeof this.notes_sequence !== 'undefined' && typeof this.sequence_note_index !== 'undefined') {
+					f = this.notes_sequence[min(this.sequence_note_index, this.notes_sequence.length - 1)]
+				}
+				let COL = (f % scale_pattern.length == 0) ? [100, 230, 0, 200] : [20, 180, 230, 200]
+				stroke(COL)
+				strokeWeight(seq_display.diam2)
+				line(from_x, seq_display.y, x_current2, seq_display.y) // note playing progress line
 			}
-			let COL = (f % scale_pattern.length == 0) ? [100, 230, 0, 200] : [20, 180, 230, 200]
-			fill(COL)
-			if (seq_display.y != null) circle(x_current, seq_display.y, seq_display.diam)
 			pop()
 		}
 		if(elapsed_time < wait_time){
@@ -443,7 +436,7 @@ class fingering_chart {
 			fill(255)
 			rect(chart_x * 1.025, this.y + this.note_height, W, H) // clear below the chart
 			// clear out chart area
-			if (stylo_mode) rect(chart_x * 1.025, chart_y, chart_x2, chart_y + chart_h)
+			if (!stylo_mode) rect(chart_x * 1.025, chart_y, chart_x2, chart_y + chart_h)
 			pop()
 		}
 		
@@ -464,7 +457,7 @@ class fingering_chart {
 			}
 			const freq = this.freq_list[i]
 			const midi_note = this.midi_note_list[i]
-			this.all_notes.push(new note(this.x + x, this.y + y, w, this.note_height, divide2, [255,0,0],//col_set[1], 
+			this.all_notes.push(new note(this.x + x, this.y + y, w, this.note_height, divide2, [1,1,1],//col_set[1], 
 				freq, midi_note, i, i + 1, 0, 0, this.accidental_type, wrapped))
 				key_sig_note = false
 				if (fingering_pattern[i] == 0) {
@@ -490,11 +483,13 @@ class fingering_chart {
 		}
 		if(update_label || update_color){
 			push()
-			strokeWeight(int(U / 14))
+			strokeWeight(max(1,int(U / 12)))
 			strokeCap(SQUARE)
 			stroke(0)
-			line(this.x, Math.ceil(this.y - U * 1.475), chart_end, Math.ceil(this.y - U * 1.475)) // upper horizontal divider line
-			line(this.x, this.y + U * 0.035, chart_end, this.y + U * 0.035) // lower horizontal divider line
+			const y0 = Math.ceil(this.y - U * 1.475)
+			const y1 = int(this.y + U * 0.035)
+			line(this.x, y0, chart_end, y0) // upper horizontal divider line
+			line(this.x, y1, chart_end, y1) // lower horizontal divider line
 			pop()
 		}
 		this.key_signature = [key_sig, accidental_count]
@@ -912,36 +907,40 @@ class fingering_chart {
 
 	generate_sequence_display(playing_note_index = null, next_playing_note_index = null){
 
-		const M = U * (0.35 - 0.1 * (this.override_OTP - 1))
-		// seq_display outer bounds are initialized in setup(); inner bounds are computed locally using M
-		// (no outer assignment here to keep setup() as the single source of layout)
 		if(!show_seq) return
-
-		const N = this.notes_sequence.length
-		const inner_x0 = seq_display.x0 + M
-		const inner_x1 = seq_display.x1 - M
-		const inner_y0 = seq_display.y0 + M
-		const inner_y1 = seq_display.y1 - M
-		let x_step = (inner_x1 - inner_x0) / (N - 1)
-		if(swing_factor && N % 2 == 0) x_step -= (x_step * swing_factor) / N
-		const SF = (this.override_OTP == 1) ? 1 : 0.5
-		const min_f = Math.min(...this.notes_sequence)
-		const max_f = Math.max(...this.notes_sequence)
-		const f_span = max(1, max_f - min_f)
-		const y_step = (inner_y1 - inner_y0) / f_span
-		const diam = min(x_step * 1.5, y_step * 1.2, 1.8 * M) * 0.9
-		seq_display.diam = diam * 0.75
-    const wt2 = min(5 * SF * 15 * U / 350, diam * 0.5)
-		
-		let x_step1, x_step2
-		
-		if(swing_factor){
-			x_step1 = x_step * (1 + swing_factor)
-			x_step2 = x_step * (1 - swing_factor)
-			// console.log((1 + swing_factor)/(1 - swing_factor))
-		}
 		
 		if(playing_note_index == null){ // update the whole sequence chart
+			const M = U * (0.35 - 0.1 * (this.override_OTP - 1))
+			const inner_x0 = seq_display.x0 + M
+			const inner_x1 = seq_display.x1 - M
+			const inner_y0 = seq_display.y0 + M
+			const inner_y1 = seq_display.y1 - M
+			seq_display.inner_x0 = inner_x0
+			seq_display.inner_x1 = inner_x1
+			seq_display.inner_y0 = inner_y0
+			seq_display.inner_y1 = inner_y1
+			
+			const N = this.notes_sequence.length
+			let x_step = (inner_x1 - inner_x0) / (N - 1)
+			if(swing_factor && N % 2 == 0) x_step -= (x_step * swing_factor) / N
+			seq_display.x_step = x_step
+			
+			const SF = (this.override_OTP == 1) ? 1 : 0.5
+			const x_step1 = x_step * (1 + swing_factor)
+			const x_step2 = x_step * (1 - swing_factor)
+
+			const min_f = Math.min(...this.notes_sequence)
+			const max_f = Math.max(...this.notes_sequence)
+			seq_display.min_f = min_f
+			seq_display.max_f = max_f
+			const f_span = max(1, max_f - min_f)
+
+			const y_step = (inner_y1 - inner_y0) / f_span
+			const diam = min(x_step * 1.5, y_step * 1.2, 1.8 * M) * 0.9
+			seq_display.diam1 = diam
+			seq_display.diam2 = diam * 0.75
+    	const wt2 = min(5 * SF * 15 * U / 350, diam * 0.5)
+			seq_display.wt2 = wt2
 			let x = inner_x0
 			
 			push()
@@ -969,9 +968,8 @@ class fingering_chart {
 					x_spacing_1 = U * 1.25
 					x_spacing_2 = U * 0.85
 				}
-				// console.log(str(x_pos) + ' ' + millis())
 				let previous_note_display_name = ''
-				strokeWeight(round(U * 0.04))
+				strokeWeight(max(1, round(U * 0.04)))
 				stroke(0)
 				for(let i = 0; i < 5; i++){ // staff lines
 					const y_pos_line = staff_dims.y_pos_staff - i * staff_dims.S
@@ -988,7 +986,7 @@ class fingering_chart {
 					note.x_pos = x_pos
 					note.generate_engraving(false, false, x_pos, natural)
 					previous_note_display_name = note_display_name
-if(x_pos > inner_x1) break
+					if(x_pos > inner_x1) break
 				}
 				pop()
 				return 
@@ -997,42 +995,25 @@ if(x_pos > inner_x1) break
 			let col3 = color(...col2, 170)
 			let col4 = color(...col1, 170)
 			let sequence_note_count = 0
-			const y_avg = seq_display.ym
-
-			// horizontal grid lines
-			for (let y = inner_y0; y <= inner_y1 + 1; y += y_step) {
-				line(inner_x0, y, inner_x1, y)
-			}
-
-			let y_oct1 = 0
-			let y_oct2 = 0
+			let final_x = 0
+			let y_octaves = []
 
 			// vertical grid lines
-			while(x <= inner_x1 + 1) {
+			while(x <= inner_x1 + M) {
+				final_x = x
 				const f = this.notes_sequence[min(sequence_note_count, this.notes_sequence.length - 1)]
 				const y = map(f, max_f, min_f, inner_y0, inner_y1)
 				line(x, inner_y0, x, inner_y1)
 				push()
 				if (f % scale_pattern.length == 0) {
 					fill(col3)
-					push()
-					stroke(col3)
-					strokeWeight(wt2)
-					if(y <= y_avg && y != y_oct1){
-						line(inner_x0, y, inner_x1, y)
-						y_oct1 = y
-					}
-					if(y > y_avg && y != y_oct2){
-						line(inner_x0, y, inner_x1, y)
-						y_oct2 = y
-					}
-					pop()
+					y_octaves.push(y)
 				}
 				else{
 					fill(col4)
 				}
 				noStroke()
-				circle(x, y, seq_display.diam)
+				circle(x, y, seq_display.diam2)
 				circle(x, y, diam)
 				pop()
 				if(swing_factor){
@@ -1042,6 +1023,20 @@ if(x_pos > inner_x1) break
 				else x += x_step
 				sequence_note_count++
 			}
+
+			// horizontal grid lines
+			for (let y = inner_y0; y <= inner_y1 + 1; y += y_step) {
+				line(inner_x0, y, final_x, y)
+			}
+			
+			// octave lines highlights
+			stroke(col3)
+			strokeWeight(wt2)
+			let y_octaves_unique = [...new Set(y_octaves)]
+			for(let y of y_octaves_unique){
+				line(inner_x0, y, final_x, y)
+			}
+
 			pop()
 			update_seq_display = false
 			sequence_chart_buffer = better_get(~~seq_display.x0, ~~seq_display.y0, seq_display.w, seq_display.h)
@@ -1052,8 +1047,9 @@ if(x_pos > inner_x1) break
 			push()
 			const pni = playing_note_index
 			const npni = next_playing_note_index
-			seq_display.x = inner_x0 + pni * x_step
-			seq_display.x_next = inner_x0 + npni * x_step
+			const x_step = seq_display.x_step
+			seq_display.x = seq_display.inner_x0 + pni * x_step
+			seq_display.x_next = seq_display.inner_x0 + npni * x_step
 			if (swing_factor){
 				if(pni % 2 == 1) seq_display.x += x_step * swing_factor
 				else seq_display.x_next += x_step * swing_factor
@@ -1064,12 +1060,12 @@ if(x_pos > inner_x1) break
 			else seq_display.x_diff = seq_display.x_next - seq_display.x
 			let f = this.notes_sequence[min(pni, this.notes_sequence.length - 1)]
 			if(isNaN(f)) f = 0
-			seq_display.y = map(f, max_f, min_f, inner_y0, inner_y1)
+			seq_display.y = map(f, seq_display.max_f, seq_display.min_f, seq_display.inner_y0, seq_display.inner_y1)
 			if(chart.dir == 1) stroke(255,80,50,120)
 			else stroke(50,80,255,120)
-			strokeWeight(wt2)
+			strokeWeight(seq_display.wt2)
 			strokeCap(ROUND)
-			line(seq_display.x, inner_y0, seq_display.x, inner_y1)
+			line(seq_display.x, seq_display.inner_y0, seq_display.x, seq_display.inner_y1)
 			pop()
 			push()
 			let COL
@@ -1080,7 +1076,8 @@ if(x_pos > inner_x1) break
 				COL = [20, 180, 230, 170]
 			}
 			fill(COL)
-			circle(seq_display.x, seq_display.y, diam)
+			noStroke()
+			circle(seq_display.x, seq_display.y, seq_display.diam1)
 			pop()
 		}
 	}

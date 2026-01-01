@@ -273,7 +273,7 @@ function setup(initial=true) {
 	chart_x = int(1.5 * U)
 	chart_x2 = int(29.53 * U)
 	chart_h = 8 * U
-	chart_y = min(8 * U, H - chart_h)
+	chart_y = ~~min(8 * U, H - chart_h)
 	chart_hy = chart_y + chart_h
 	chart_label_height = 1.45 * U
 	chart_above = chart_y - chart_label_height
@@ -1455,7 +1455,7 @@ function input_released() {
 
 let saved_chart_graphics = false
 
-function save_chart(){
+async function save_chart(){
 	if(note_count != 12) return
 	// let alt_chart1 = (instrument_name.includes('Trumpet') && condensed_notes)
 	let rows = 4
@@ -1482,25 +1482,11 @@ function save_chart(){
 
 	const total_keys = rows * cols
 	const H1 = int(chart_y - chart_above + chart_height)
-	const W1 = int(chart_end - chart_x)
-	const dims = [int(chart_x), int(chart_above), W1, H1]
 	const margin = int(U * 0.2)
 	const WP = int(U * 12.75) // pattern rep width
 	const HP = int(U) // pattern rep height
 	const footer_H = max(int(H1 * 0.15) + margin, HP + 2 * margin)
-	const W2 = cols * W1 + (cols - 1) * margin
-	const w2 = W2/2
 	const H2 = rows * H1 + (rows - 1) * margin + footer_H
-
-	if(saved_chart_graphics){
-		full_chart.resizeCanvas(W2, H2)
-	}
-	else{
-		saved_chart_graphics = true
-		full_chart = createGraphics(W2, H2)
-	}
-
-	full_chart.background(0)
 
 	let starting_key = instrument_obj.key ? instrument_obj.key : 'C'
 
@@ -1531,17 +1517,73 @@ function save_chart(){
 		update_key()
 	}
 
-	let key_index = notes_arr.findIndex(x => x === key_name)
+	let key_index
+	let W1 = 0
+	let W2 = 0
+	// let widths = Array.from({length: rows}, () => [])
+	let row_widths = new Array(rows).fill(0)
+	let x_positions = []
+	if(condensed_notes){ 
+		// need to calculate max row width for the full chart width,
+		// and the position of each variable-width chart within each row.
+		key_index = notes_arr.findIndex(x => x === key_name)
+		for(let count = 0; count < total_keys; count++){
+			key_index = (key_index + 1 + notes_arr.length) % notes_arr.length
+			key_name = notes_arr[key_index]
+			update_key(false, false)
+			W1 = int(chart_end - chart_x) + margin
+			const row_index = count % rows
+			x_positions[count] = row_widths[row_index]
+			row_widths[row_index] += W1
+			// widths[row_index].push(W1)
+		}
+		W2 = Math.max(...row_widths)
+	}
+	else{
+		W1 = int(chart_end - chart_x)
+		W2 = cols * W1 + (cols - 1) * margin
+	} 
+	
+	const w2 = W2/2
+	
+	const dims = [int(chart_x), int(chart_above), W1, H1]
+	
+	if(saved_chart_graphics){
+		full_chart.resizeCanvas(W2, H2)
+	}
+	else{
+		saved_chart_graphics = true
+		full_chart = createGraphics(W2, H2)
+	}
+	full_chart.background(0)
+
+	let key_chart, x
+	key_index = notes_arr.findIndex(x => x === key_name)
 	for(let count = 0; count < total_keys; count++){
 		const final = (count == total_keys - 1)
 		key_index = (key_index + 1 + notes_arr.length) % notes_arr.length
 		key_name = notes_arr[key_index]
 		update_key(final, !final)
-		
-		let key_chart = better_get(dims[0],dims[1], dims[2], dims[3])
 
-		const x = (W1 + margin) * int(count / rows)
+		// wait for the draw loop to process the update so the canvas is up-to-date
+		await new Promise(resolve => {
+			const check = () => {
+				if (!update_chart) resolve()
+				else requestAnimationFrame(check)
+			}
+			requestAnimationFrame(check)
+		})
+
+		if(condensed_notes){
+			x = x_positions[count]
+			W1 = int(chart_end - chart_x)
+			dims[2] = W1
+		}
+		else x = (W1 + margin) * int(count / rows)
+		
 		const y = (H1 + margin) * (count % rows)
+		key_chart = better_get(dims[0],dims[1], dims[2], dims[3])
+
 		full_chart.image(key_chart, ~~x, ~~y, W1, H1)
 	}
 	let save_str
@@ -1735,7 +1777,7 @@ function in_seq_display(vertical = true, x = mouseX, y = mouseY){
 	}
 	const a = seq_display
 	let val = 0
-	if(a.x0 <= x && x <= a.x1 && a.y0 <= y && y <= a.y1) val = 1
+	if(a.inner_x0 <= x && x <= a.inner_x1 && a.inner_y0 <= y && y <= a.inner_y1) val = 1
 	if(val == 0) return val
 	if(vertical){
 		if(y > a.ym) val = 2
