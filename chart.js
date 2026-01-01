@@ -484,7 +484,6 @@ class fingering_chart {
 		if(update_label || update_color){
 			push()
 			strokeWeight(max(1,int(U / 12)))
-			strokeCap(SQUARE)
 			stroke(0)
 			const y0 = Math.ceil(this.y - U * 1.475)
 			const y1 = int(this.y + U * 0.035)
@@ -908,7 +907,7 @@ class fingering_chart {
 	generate_sequence_display(playing_note_index = null, next_playing_note_index = null){
 
 		if(!show_seq) return
-		
+
 		if(playing_note_index == null){ // update the whole sequence chart
 			const M = U * (0.35 - 0.1 * (this.override_OTP - 1))
 			const inner_x0 = seq_display.x0 + M
@@ -990,7 +989,7 @@ class fingering_chart {
 				}
 				pop()
 				return 
-			} 
+			}
 
 			let col3 = color(...col2, 170)
 			let col4 = color(...col1, 170)

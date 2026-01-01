@@ -318,7 +318,6 @@ function setup(initial=true) {
 	seq_display.ym = int((seq_display.y0 + seq_display.y1) / 2)
 
 	if(initial){
-
 		WebMidi
 			.enable()
 			.then(onEnabled)
@@ -346,6 +345,7 @@ function setup(initial=true) {
 			pop()
 		}
 		createCanvas(W, H)
+		strokeCap(SQUARE)
 		chart = new fingering_chart(chart_x, chart_y)
 	}	
 	else{

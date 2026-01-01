@@ -43,6 +43,7 @@ class note {
 		this.accidental_type = accidental_type
 		this.current_octave = int(starting_octave)
 		this.wt = Math.ceil(U / 15)
+		this.wt2 = max(1, int(this.wt * 0.75))
 		this.dots = min(7, note_count)
 		this.note_name = str(notes_arr[this.index % note_count])
 		if(this.note_name.length > 1){
@@ -186,7 +187,6 @@ class note {
 	static_lines(){ // vertical note divider lines
 		push()
 		strokeWeight(this.wt)
-		strokeCap(SQUARE)
 		stroke(this.note_color)
 		const y_start = this.y - (!this.wrapped ? int(this.above - U * 0.06) : 0)
 		line(this.x + this.w, y_start, this.x + this.w, this.y + this.h) // vertical divider line
@@ -258,7 +258,6 @@ class note {
 			stroke(COL)
 			const wt2 = max(1, this.wt * weight_factor)
 			strokeWeight(wt2)
-			strokeCap(SQUARE)
 			let m = U * 0.1
 			// horizontal hole group dividing lines -----------------------------
 			let split_holes = false
@@ -283,21 +282,21 @@ class note {
 					rect(x0, y_pos + m1, this.w - 2 * m1, (this.y + this.h - this.divide - m1))
 					pop()
 				}
-			} 
+			}
 			else line(this.x + m, y_pos, this.x + this.w - m, y_pos)
 			if(!condensed_notes && instrument_type == 'brass'){
 				y_pos = this.y + this.h - wt2/2 // bottom of note area
 				line(this.x + m, y_pos, this.x + this.w - m, y_pos)
-			} 
+			}
 			pop()
 			// ---------------------------------------------------------------------
 			for(let i = 0; i < symbols_to_display; i++){ // draw hole / valve representations
 				let shift = 0
 				state = note_fingering[i]
 				let inc2 = (state > 0 || increase_open)? inc : 0
-				const y2 = this.y + y_inc * 0.5  + y_inc * i
+				const y2 = this.y + y_inc * 0.5 + y_inc * i
 				const diam2 = U * (0.5 + inc2)
-				circle(this.mid, y2, U * (0.6 + inc2)) 
+				circle(this.mid, y2, U * (0.6 + inc2))
 				if(state == 0 || state == 2){
 					push()
 					fill(255) // inner hole circle / half circle
@@ -306,11 +305,12 @@ class note {
 						if(note_fingering.length == 9) shift = -HALF_PI
 					}
 					stroke(COL)
-					arc(this.mid, y2, 
+					strokeWeight(this.wt2)
+					arc(this.mid, y2,
 						diam2, diam2, state * HALF_PI + shift, TAU + shift, PIE)
 					if(split_holes && i > 5 && state == 0){
-						arc(this.mid, y2, 
-							diam2, diam2, shift, PI + shift, PIE)						
+						arc(this.mid, y2,
+							diam2, diam2, shift, PI + shift, PIE)
 					}
 					pop()
 				}
@@ -346,11 +346,9 @@ class note {
 				}
 			}
 			else if(stylo_mode && note_span || note_count != 12){ 
-				const h1 = this.h * 0.99
+				const h1 = Math.ceil(this.h * 0.99)
 				if(this.is_pressed && !chart.playing_scale && !this.special_note){
-					// slight gap to indicate upper zone for staccato
-					push()
-					// pop()
+					// indicator for staccato zone
 					const y2 = this.y + 2 * U
 					const m2 = this.w * 0.1
 					fill(0,20)
@@ -360,7 +358,7 @@ class note {
 				}
 				else{
 					if(this.special_note) fill(...COL, 150)
-						rect(x0, y0b, this.w - m1 * 2, h1)
+					rect(x0, y0b, this.w - m1 * 2, h1)
 				}
 				push()
 				stroke(255)
@@ -369,7 +367,8 @@ class note {
 				this.static_lines() // redraw vertical divider line
 				stroke(0)
 				strokeWeight(this.wt)
-				line(this.x, y0, this.x + this.w + m1, y0)
+				const x2 = this.x + this.w + (this.x + this.w > chart_end - U ? 0 : m1)
+				line(this.x, y0 - m1 / 2, x2, y0 - m1 / 2) // horizontal divider
 				pop()
 				if(!this.playable){
 					fill(255, 150)
@@ -461,7 +460,7 @@ class note {
 		const S = staff_dims.S
 		const x1 = staff_dims.x1 + x_offset
 		const y1 = staff_dims.y1
-		const y_pos = int(y_pos_staff + S - this.y_note_index * S * 0.5 + chart.bass_instrument * S)
+		const y_pos = round(y_pos_staff + S - this.y_note_index * S * 0.5 + chart.bass_instrument * S)
 		const wt = staff_dims.wt
 
 		push()
@@ -513,31 +512,29 @@ class note {
 		push()
 		stroke(0, opacity)
 		strokeWeight(wt)
-		strokeCap(SQUARE)
 		const lw = 2.3 * M
-		// draw lines above or below staff
-		if(y_pos > y_pos_staff + 0.5 * S || y_pos < y_pos_staff - 4.5 * S){
-			if(y_pos > y_pos_staff){ 
+		// draw ledger lines aligned to staff grid
+		const top_staff_line = y_pos_staff - 4 * S
+		if(y_pos > y_pos_staff + 0.5 * S || y_pos < top_staff_line - 0.5 * S){
+			if(y_pos > y_pos_staff + 0.5 * S){
 				const lines_below = int((y_pos - y_pos_staff) / S)
-				const index_offset = (this.y_note_index % 2 == 0) ? 0 : int(S * 0.5)
-				for(let i = 0; i < lines_below; i++){
-					let y_pos_S = y_pos - i * S - index_offset
-					line(xm - lw, y_pos_S , xm + lw, y_pos_S)
+				for(let i = 1; i <= lines_below; i++){
+					let y_line = round(y_pos_staff + i * S)
+					line(xm - lw, y_line, xm + lw, y_line)
 				}
 			}
 			else{
-				const lines_above = int(((y_pos_staff - S * 4) - y_pos) / S)
-				const index_offset = (this.y_note_index % 2 == 0) ? 0 : int(S * 0.5)
-				for(let i = 0; i < lines_above; i++){
-					let y_pos_S = y_pos + i * S + index_offset
-					line(xm - lw, y_pos_S , xm + lw, y_pos_S)
+				const lines_above = int((top_staff_line - y_pos) / S)
+				for(let i = 1; i <= lines_above; i++){
+					let y_line = round(top_staff_line - i * S)
+					line(xm - lw, y_line, xm + lw, y_line)
 				}
 			}
 		}
 		else if(this.y_note_index % 2 == 0){
 			stroke(0)
 			line(xm - S * 0.7, y_pos , xm + S * 0.7, y_pos)
-		} 
+		}
 		pop()
 
 		// console.log(this.note_display_name, y_pos)
