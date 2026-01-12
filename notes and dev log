@@ -350,13 +350,30 @@ It will be a useful tool for me as well to bring my sight reading ability up to 
 	- fixed issues with save_chart for condensed notes
 	- fixed flickering issue when changing key or mode on stylo_mode
 	- added note progress line on < 120 bpm sequence display
+1-5-26
+	- Can now save in a compact condensed chart. When the save chart button is pressed and the confirm button
+	is shown, now if it is in condensed notes mode, a "compact version" button will be shown. This saves the 
+	charts with the note widths the same as if it was not in condensed mode where they get stretched wider. 
+	This button replaces the cancel button which was redundant.
+	- added a syncopation feature to the sequence playback. It is controlled by dragging within the sequence display area
+	after either opening the sequence menu and then pressing the SYNC. button (only works when menu is open), or by dragging
+	with the right mouse button (or two finger touch on a mobile device).
+	Dragging from top half to bottom half or vice versa will switch from negative to positive syncopation,
+	and dragging horizontally will set to intervals of 2, 3, or 4 notes depending on which third of the chart.
+	Dragging outside will turn it off.
+	- changed webmidi functions to allow for rescanning of midi devices whenever the miscellaneous menu is opened.
+	- started working on midi channel selection scheme
+	- added pitch bend starting_y indicator to make it easier to return to that point. It only draws it when you
+	 reverse direction by a bit, when you might want to know where to target for the starting pitch.
 
 To-do:
-- add a save_charts function that will save a chart for each scale and mode for the current instrument.
-- add an option when saving a condensed chart to make it more condensed. Maybe full, condensed, and compact? 
-Can just make more buttons for the different options. Maybe one for saving a larger set, or individual key images.
+- prevent webmidi from hogging all midi connections on PC when it is enabled. 
+Currently have to click midi out button to enable, so that's better than at startup.
+Maybe figure out how to properly disconnect as well.
+- add a pitch bend range control for stylo mode...somewhere.
 - add midi channel selection options, since it's possible to send melody or drone 
 on any/all of the 16 available channels. Add midi auto-connect feature. Will need to save connection device and channel preferences.
+- add a save_charts function that will save a chart for each scale and mode for the current instrument.
 - prevent midi note re-trigger when moving to a new note if the pitch has been bent such that it is very close to the new note.
 - hold_fing instrument toggle doesn't work properly for brass instruments. Maybe note applicable in the same way.
 - fix issues with save_chart.

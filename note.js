@@ -242,9 +242,11 @@ class note {
 		let note_fingering = fingering_data[this.index]
 		noStroke()	
 		fill(COL)
-		const m1 = Math.ceil(U * 0.065)
-		const y0 = this.y + m1
-		const y0b = this.y + U * 0.065
+		const m = U * 0.065
+		const m1 = Math.ceil(m)
+		const y0 = this.y + m1 - 1
+		const y0b = this.y + m
+		const h1 = int(this.h + this.y - y0)
 		const x0 = this.x + m1
 		const m2 = U * 0.028
 		const y_inc = int(chart_h * 0.125)
@@ -254,7 +256,7 @@ class note {
 			let inc = 0.09 * this.is_pressed
 			push()
 			fill(255)
-			rect(this.x + m1, y0, this.w - m1 * 2, this.h - m1) // clear old shapes out to make it look better
+			rect(this.x + m1, y0, this.w - m1 * 2, h1 + 1) // clear old shapes out to make it look better
 			stroke(COL)
 			const wt2 = max(1, this.wt * weight_factor)
 			strokeWeight(wt2)
@@ -329,24 +331,27 @@ class note {
 			if(!stylo_mode && note_count == 12){
 				push()
 				fill(255)
-				rect(this.x + m2, y0, this.w - m2, this.h - m1) // clear old shapes out to make it look better
+				rect(this.x + m2, y0, this.w - m2, h1 + 1) // clear old shapes out to make it look better
 				this.static_lines() // redraw vertical divider line
 				pop()
 				if(this.special_note) fill(...COL, 150)
-				if(this.note_val > 0) rect(x0, this.y + this.h * 0.008, this.w - m1 * 2, this.h - m1)
+				if(this.note_val > 0) rect(x0, y0, this.w - m1 * 2, h1)
 				else rect(x0, y0, this.w - m1 * 2, this.divide - this.y)
 				if(this.wrapped && !hide_fingering){
 					push()
 					fill(0,30)
 					const w2 = this.w * 0.3
-					triangle(this.mid - w2, this.y + U * 1.75, this.mid + w2, this.y + U * 1.75, this.mid, this.y + U * (1.25 - 0.25 * this.is_pressed))
+					triangle(
+						this.mid - w2, this.y + U * 1.75, 
+						this.mid + w2, this.y + U * 1.75, 
+						this.mid, this.y + U * (1.25 - 0.25 * this.is_pressed)
+					)
 					textSize(this.w * 0.7)
 					text(this.current_octave, this.mid, this.y + U * 0.25)
 					pop()
 				}
 			}
 			else if(stylo_mode && note_span || note_count != 12){ 
-				const h1 = Math.ceil(this.h * 0.99)
 				if(this.is_pressed && !chart.playing_scale && !this.special_note){
 					// indicator for staccato zone
 					const y2 = this.y + 2 * U
@@ -354,11 +359,11 @@ class note {
 					fill(0,20)
 					quad(this.mid + m1, y0, this.mid - m1, y0, this.x + m2, y2, this.x + this.w - m2, y2)
 					fill(0,65)
-					rect(x0, y0b, this.w - m1 * 2, h1)
+					rect(x0, y0, this.w - m1 * 2, h1)
 				}
 				else{
 					if(this.special_note) fill(...COL, 150)
-					rect(x0, y0b, this.w - m1 * 2, h1)
+					rect(x0, y0, this.w - m1 * 2, h1)
 				}
 				push()
 				stroke(255)

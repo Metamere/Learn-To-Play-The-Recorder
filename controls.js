@@ -24,6 +24,7 @@ let scl2
 let drone_button_longpress_timer = null
 let drone_button_longpressed = false
 let MIDI_OUTPUT_button = false
+let midi_outputs_checked = false
 
 function create_controls(initial=true){
 	inst_x = 2 * U
@@ -102,37 +103,38 @@ function create_controls(initial=true){
 	MISC_MENU_button.position(0, 0)
 	
 	let last_col_x = U * 13.4
-	
+	const button_w2d = button_w2 + U * 0.15
+
 	if(initial){
 		SAVE_CHART_button = createButton('SAVE CHART')
 		SAVE_CHART_button.mouseReleased(save_confirm)
 		SAVE_CHART_button.id('SAVE_CHART')
 		SAVE_CHART_button.hide()
 		if(note_count != 12) SAVE_CHART_button.style('backgroundColor', 'rgb(140,140,140)')
-	} 
+	}
 	SAVE_CHART_button.style("font-size", scl_L + "px")
-	SAVE_CHART_button.size(button_w2, button_h2 + U * 0.25)
+	SAVE_CHART_button.size(button_w2d, button_h2 + U * 0.25)
 	SAVE_CHART_button.position(last_col_x, row3 - U * 0.25)
 	
 	if(initial){
-		SAVE_CHART_CANCEL_button = createButton('CANCEL')
-		SAVE_CHART_CANCEL_button.mouseReleased(save_confirm)
-		SAVE_CHART_CANCEL_button.id('SAVE_CANCEL')
-		SAVE_CHART_CANCEL_button.hide()
+		SAVE_CHART_COMPACT_button = createButton('COMPACT VERSION')
+		SAVE_CHART_COMPACT_button.mouseReleased(function() {save_chart(true)})
+		SAVE_CHART_COMPACT_button.id('SAVE_COMPACT')
+		SAVE_CHART_COMPACT_button.hide()
 	} 
-	SAVE_CHART_CANCEL_button.style("font-size", scl_L + "px")
-	SAVE_CHART_CANCEL_button.size(button_w2 * 1.4, button_h2)
-	SAVE_CHART_CANCEL_button.position(last_col_x + button_w2, row3)
+	SAVE_CHART_COMPACT_button.style("font-size", scl_L + "px")
+	SAVE_CHART_COMPACT_button.size(button_w2 * 1.4, button_h2 + 0.25 * U)
+	SAVE_CHART_COMPACT_button.position(last_col_x + button_w2 * 2.46, row3 - 0.25 * U)
 	
 	if(initial){
 		SAVE_CHART_CONFIRM_button = createButton('CONFIRM')
-		SAVE_CHART_CONFIRM_button.mouseReleased(save_chart)
+		SAVE_CHART_CONFIRM_button.mouseReleased(function() {save_chart(false)})
 		SAVE_CHART_CONFIRM_button.id('SAVE_CONFIRM')
 		SAVE_CHART_CONFIRM_button.hide()	
 	} 
 	SAVE_CHART_CONFIRM_button.style("font-size", scl_L + "px")
-	SAVE_CHART_CONFIRM_button.size(button_w2 * 1.4, button_h2)
-	SAVE_CHART_CONFIRM_button.position(last_col_x + button_w2 * 2.4, row3)
+	SAVE_CHART_CONFIRM_button.size(button_w2 * 1.4, button_h2 + U * 0.25)
+	SAVE_CHART_CONFIRM_button.position(last_col_x + button_w2d, row3 - U * 0.25)
 	
 	if(initial){
 		DRONE_VOL_button = createButton('DRONE VOL ' + round(default_drone_vol * 100))
@@ -141,7 +143,7 @@ function create_controls(initial=true){
 		DRONE_VOL_button.hide()
 	} 
 	DRONE_VOL_button.style("font-size", int(U * 0.67) + "px")
-	DRONE_VOL_button.size(button_w2 + U * 0.15, button_h2)
+	DRONE_VOL_button.size(button_w2d, button_h2)
 	DRONE_VOL_button.position(last_col_x, row2)
 	
 	if(initial){
@@ -160,7 +162,7 @@ function create_controls(initial=true){
 		VOL_button.hide()
 	} 
 	VOL_button.style("font-size", int(U * 0.67) + "px")
-	VOL_button.size(button_w2 + U * 0.15, button_h2)
+	VOL_button.size(button_w2d, button_h2)
 	VOL_button.position(last_col_x, row1)
 	
 	if(initial){
@@ -275,7 +277,7 @@ function create_controls(initial=true){
 	TYPE_MENU_button.style("font-size", scl_L2 + "px")
 	TYPE_MENU_button.style('transform', 'rotate(270deg)')
 	TYPE_MENU_button.size(U * 3, 1.45 * U)
-	TYPE_MENU_button.position(-U * 0.75, row1 + U * 2.58)
+	TYPE_MENU_button.position(-U * 0.75, row1 + U * 2.85)
 	
 	RECORDER_TYPE_button.style("font-size", scl_L2 + "px")
 	RECORDER_TYPE_button.size(U * 10, button_h)
@@ -491,6 +493,11 @@ function create_controls(initial=true){
 		OCTAVES_button.mousePressed(function() {set_octaves_to_play(0)})
 		OCTAVES_button.id('OCTAVES')
 		OCTAVES_button.hide()
+		SYNC_button = createButton('SYNC.')
+		SYNC_button.mousePressed(function() {toggle_syncopation_control(false)})
+		SYNC_button.id('SYNCOPATION')
+		SYNC_button.hide()
+		toggle_syncopation_control(true)
 	} 
 
 	REVERSE_button.style("font-size", scl_L2 + "px")
@@ -512,8 +519,13 @@ function create_controls(initial=true){
 	OCTAVES_button.style("font-size", scl_L2 + "px")
 	OCTAVES_button.size(button_hs, button_hs)
 	OCTAVES_button.position(U * 9,  y_seq)
+
+	SYNC_button.style("font-size", scl_L2 + "px")
+	SYNC_button.size(button_hs * 2.25, button_hs)
+	SYNC_button.position(U * 10.75,  y_seq)
 	
 	if(MIDI_OUTPUT_button) midi_output_button_style_update()
+
 	// if(initial) notes_count_input = createInput(str(note_count))
 	// notes_count_input.style("font-size", int(U*0.65) + "px")
 	// notes_count_input.size(button_w*0.75, button_h/2)
@@ -534,6 +546,18 @@ function create_controls(initial=true){
 		// shuffle_array(shuffled_sequence_indices)	
 	}
 	update_sequence()
+}
+
+function toggle_syncopation_control(update_color_only = false){
+	if(!update_color_only) syncopation_control_active = !syncopation_control_active
+	storeItem("syncopation_control_active", syncopation_control_active)
+
+	if(syncopation_control_active){
+		SYNC_button.style('backgroundColor', 'rgb(255,200,95)')
+	}
+	else{
+		SYNC_button.style('backgroundColor', 'rgb(240,240,240)')
+	}
 }
 
 function mode_mode_switch(){
@@ -571,13 +595,14 @@ function midi_output_button_style_update(){
 function MISC_MENU_buttons_toggle(){
 	misc_buttons_shown = !misc_buttons_shown
 	if(misc_buttons_shown){
-		if(!MIDI_OUTPUT_button && midi_output_device_count){
-			MIDI_OUTPUT_button = createButton(`${midi_output_device_count > 1 ? midi_output_device_count + ' ' : ''}MIDI OUT`)
+		// update_midi_device_list()
+		if(!MIDI_OUTPUT_button){
+			MIDI_OUTPUT_button = createButton('MIDI OUT')
 			TYPE_MENU_button.id('MIDI')
-			MIDI_OUTPUT_button.hide()
 			MIDI_OUTPUT_button.mousePressed(midi_output_selection_menu_toggle)
 			midi_output_button_style_update()
 		}
+		else if(midi_output_device_count !== 0) MIDI_OUTPUT_button.show()
 		// PLACEHOLDER_button.show()
 		if(previous_instrument_name){
 			HOLD_KEY_button.style('backgroundColor', 'rgb(240,240,240)')
@@ -603,7 +628,6 @@ function MISC_MENU_buttons_toggle(){
 		MODE_INC_button.show()
 		MODE_DEC_button.show()
 		TYPE_MENU_button.show()
-		if(MIDI_OUTPUT_button) MIDI_OUTPUT_button.show()
 		TUNING_button.show()
 		PREV_SCALE_button.show()
 		NEXT_SCALE_button.show()
@@ -620,7 +644,7 @@ function MISC_MENU_buttons_toggle(){
 		DOWN_button.hide()
 		SAVE_CHART_button.hide()
 		SAVE_CHART_CONFIRM_button.hide()
-		SAVE_CHART_CANCEL_button.hide()
+		SAVE_CHART_COMPACT_button.hide()
 		save_confirm_shown = false
 		// PLACEHOLDER_button.hide()
 		MODE_MODE_button.hide()
@@ -659,33 +683,58 @@ function instrument_type_menu_toggle(){
 	}
 }
 
-let midi_outputs_shown
+let midi_outputs_shown = false
 let midi_output_buttons = []
+let midi_channel_selection_generated = false
 let midi_output_device_index = null
 function midi_output_selection_menu_toggle(){
-	if(!midi_output_device_count) return
-	if(midi_output_buttons.length == 0){
+	if(midi_output_device_count == -1){
+		// console.log('enable webmidi')
+		WebMidi
+			.enable() // this seems to claim every connected midi device for some reason.
+			.then(onEnabled)
+			.catch(err => alert(err));
+
+		// Function triggered when WEBMIDI.js is ready
+		function onEnabled() {
+			update_midi_device_list()
+			// Ensure any stuck notes on *all* outputs are silenced
+			if(WebMidi && WebMidi.outputs.length){
+				WebMidi.outputs.forEach((device) => {
+					for(let i = 0; i < 128; i++) device.sendNoteOff(i, {channels: [1,2]})
+					// device.close()
+				})
+			}
+		}
+	}
+	else if(midi_output_device_count > 0){
+		midi_outputs_shown = !midi_outputs_shown
+		// if(!midi_outputs_shown) update_midi_device_list()
+	}
+	if(midi_output_device_count > 0 && midi_output_buttons.length == 0){
 		const button_width = midi_device_max_name_length + U // U * 14
-		const button_stack = constrain(midi_output_device_count, 2, 4)
-		const button_height = U * (6 / button_stack)
+		const button_stack = 6 // constrain(midi_output_device_count, 2, 6)
+		const button_height = int(U * 9.5 / button_stack)
 		const y0 = chart_y + chart_h
 		const font_str = text_size2 + 'px'
 		let previous_device_name = ''
 		for(let i = 0; i < midi_output_device_count; i++){
-				let list_item = midi_device_list[i]
+				const idx = min(i, midi_output_device_count - 1)
+				let list_item = midi_device_list[idx]
 				let device_name = list_item.name
-				if(device_name == previous_device_name) continue
+				// if(device_name == previous_device_name) continue
 				previous_device_name = device_name
 				let button = createButton(device_name)
 					.size(button_width, button_height)
-					.position(U * 1.5 + button_width * int(i / button_stack), y0 - button_height * (1 + i % button_stack))
+					.position(U * 1.5 + button_width * int(i / button_stack), int(y0 - button_height * (1 + i % button_stack)))
 					.style("font-size", font_str)
 					.id('MIDI_' + i)
 					.mousePressed(function() {
 						if(midi_output_device && this.elt.id == 'MIDI_' + midi_output_device_index){
 							for(let i = 0; i < 128; i++){
-								midi_output_device.sendNoteOff(i, {channels: [1,2]})
+								midi_output_device.sendNoteOff(idx, {channels: [1,2]})
 							}
+							midi_output_device.close()
 							midi_output_device = null
 							midi_output_device_index = null
 							main_output_channel = 0
@@ -694,7 +743,8 @@ function midi_output_selection_menu_toggle(){
 							// console.log('midi output disconnected from: ' + device_name)
 						}
 						else{
-							midi_output_device = WebMidi.outputs[midi_device_list[i].original_index]
+							midi_output_device = WebMidi.outputs[midi_device_list[idx].original_index]
+							midi_output_device.open()
 							main_output_channel = midi_output_device.channels[1]
 							main_output_channel.sendPitchBendRange(2, 0)
 							drone_output_channel = midi_output_device.channels[2]
@@ -707,13 +757,126 @@ function midi_output_selection_menu_toggle(){
 				midi_output_buttons.push(button)
 		}
 	}
-	midi_outputs_shown = !midi_outputs_shown
-	if(midi_outputs_shown){
-		for(button of midi_output_buttons) button.show()
+	// create channel selection buttons if they have not been already.
+	// need to add a toggle to show channel selections when a device is updated if there are any.
+	// otherwise just show them instead of the midi output devices
+	// change the embedded functions to update the position of the selected button
+	//  to be at bottom left and hide the rest. That way channel selection buttons can be in same location.
+	// each numbered button will have a function that will change a value in the channels array
+	// if(!midi_channel_selection_generated){
+		// push()
+		// fill(150)
+		// stroke(0)
+		// strokeWeight(3)
+		// const button_size = U * 1.58
+		// textSize(button_size * 0.75)
+		// textAlign(CENTER, CENTER)
+		// let x_pos0 = U * 29.25 - button_size * 4
+		// for(let i = 0; i < 16; i++){
+		// 	const x = button_size * (i % 4)
+		// 	const y = button_size * (int(i / 4) + 2)
+		// 	const x_pos = x_pos0 + x
+		// 	const y_pos = chart_hy - y
+		// 	rect(x_pos, y_pos, button_size, button_size, button_size * 0.1)
+		// 	text(i + 1, x_pos + button_size / 2, y_pos + button_size / 2)
+		// }
+		// rect(x_pos0, chart_hy - button_size, button_size * 4, button_size, button_size * 0.1)
+		// text('DRONE', x_pos0 + button_size * 2, chart_hy - button_size / 2)
+		// let y_pos = chart_hy - 6 * button_size
+		// rect(x_pos0, y_pos, button_size * 2, button_size, button_size * 0.1)
+		// text('ALL', x_pos0 + button_size, y_pos + button_size / 2)
+		// rect(x_pos0 + button_size * 2, y_pos, button_size * 2, button_size, button_size * 0.1)
+		// text('NONE', x_pos0 + button_size * 3, y_pos + button_size / 2)
+		// midi_channel_selection_generated = true
+		// pop()
+	// }
+	if(midi_output_device_count > 0){
+		if(midi_outputs_shown){
+			update_midi_output_button_colors(midi_output_device_index)
+			for(button of midi_output_buttons){
+				button.show()
+			} 
+		}
+		else{
+			for(button of midi_output_buttons) button.hide()
+		}
 	}
-	else{
-		for(button of midi_output_buttons) button.hide()
+	// else{
+	// 	// show channel selection buttons
+	// }
+}
+
+function update_midi_device_list(){
+	// it only seems to actually update devices when webmidi is first enabled
+	if(typeof WebMidi === 'undefined' || !WebMidi.outputs) return;
+	// build list and calc max name width
+	midi_device_list = []
+	midi_device_max_name_length = 0
+	push()
+	textSize(text_size2)
+	for(let i = 0; i < WebMidi.outputs.length; i++){
+		const device = WebMidi.outputs[i]
+		midi_device_max_name_length = max(midi_device_max_name_length, textWidth(device.name))
+		if(!midi_device_list.some(e => e.name === device.name)){
+			midi_device_list.push({ original_index: i, name: device.name })
+		}
 	}
+	pop()
+	// Put devices that start with 'Midihub' first (case-insensitive),
+	// then sort the rest alphabetically. Keep relative ordering for
+	// identical groups by falling back to localeCompare.
+	midi_device_list.sort((a, b) => {
+		const aName = a.name || ''
+		const bName = b.name || ''
+		const aMid = aName.toLowerCase().startsWith('midihub')
+		const bMid = bName.toLowerCase().startsWith('midihub')
+		if (aMid && !bMid) return -1
+		if (!aMid && bMid) return 1
+		return aName.localeCompare(bName)
+	})
+	midi_output_device_count = WebMidi.outputs.length
+
+	// if(midi_output_device){
+	// 	if(!midi_device_list.some(e => e.name === midi_output_device.name)){
+	// 		for(let i = 0; i < 128; i++) midi_output_device.sendNoteOff(i, {channels: [1,2]})
+	// 		midi_output_device.close()
+	// 		midi_output_device = null
+	// 		// WebMidi.outputs[midi_output_device_index].close()
+	// 		midi_output_device_index = null
+	// 		main_output_channel = 0
+	// 		drone_output_channel = 0
+	// 		midi_output_enabled = false
+	// 	}
+	// 	else{
+	// 		// Update stored index/reference in case ordering changed
+	// 		midi_output_device_index = midi_device_list.findIndex(e => e.name === midi_output_device.name)
+	// 		WebMidi.outputs[midi_output_device_index].open()
+	// 		const item = midi_device_list[midi_output_device_index]
+	// 		if(item) midi_output_device = WebMidi.outputs[item.original_index]
+	// 	}
+	// }
+
+	// Update button label if present
+	if(midi_output_device_count){
+		MIDI_OUTPUT_button.html(`${midi_output_device_count} MIDI OUT`)
+		MIDI_OUTPUT_button.style('backgroundColor', 'rgb(255,200,95)')
+	}
+	else {
+		midi_outputs_checked = true
+		MIDI_OUTPUT_button.style('backgroundColor', 'rgb(150, 150, 150)')
+		MIDI_OUTPUT_button.html(
+			random(['NONE', 
+				random(['NADA', 'ZERO', 'ZILCH', ' ', 'YOU WISH', 'SIGH', 'SORRY', 'NINGUNO', 'RIP'])
+			])
+		)
+	}
+
+	// // Clear any existing output buttons so menu will be rebuilt with current list
+	// if(midi_output_buttons.length){
+	// 	for(let b of midi_output_buttons) b.remove()
+	// 	midi_output_buttons = []
+	// 	midi_outputs_shown = false
+	// }
 }
 
 function update_midi_output_button_colors(index){
@@ -794,12 +957,12 @@ function save_confirm(){
 	if(note_count != 12) return
 	save_confirm_shown = !save_confirm_shown
 	if(save_confirm_shown){
-			SAVE_CHART_CONFIRM_button.show()
-			SAVE_CHART_CANCEL_button.show()
+		SAVE_CHART_CONFIRM_button.show()
+		if(condensed_notes) SAVE_CHART_COMPACT_button.show()
 	}
 	else{
 		SAVE_CHART_CONFIRM_button.hide()
-		SAVE_CHART_CANCEL_button.hide()
+		SAVE_CHART_COMPACT_button.hide()
 	}
 }
 
@@ -1198,7 +1361,7 @@ function toggle_tuning_slider(){
 		TUNING_slider.show()
 		SAVE_CHART_button.hide()
 		SAVE_CHART_CONFIRM_button.hide()
-		SAVE_CHART_CANCEL_button.hide()
+		SAVE_CHART_COMPACT_button.hide()
 		save_confirm_shown = false
 		HOLD_KEY_button.hide()
 		HOLD_FING_button.hide()
@@ -1281,6 +1444,7 @@ function toggle_sequence_slider(){
 		LOOP_button.hide()
 		PLACEHOLDER2_button.hide()	
 		OCTAVES_button.hide()
+		SYNC_button.hide()
 		sequence_slider_shown = false
 		SEQ_SELECT_button.style('backgroundColor', 'rgb(240,240,240)')
 		const shown_time = millis() - sequence_slider_shown_time
@@ -1300,6 +1464,7 @@ function toggle_sequence_slider(){
 		FORWARD_button.show()
 		BOTH_DIR_button.show()
 		LOOP_button.show()
+		SYNC_button.show()
 		set_direction_button_colors()
 		sequence_slider_shown = true
 		sequence_slider_shown_time = millis()
@@ -1521,6 +1686,7 @@ function update_mode(initial = true, history=false){
 	// storeItem("mode_scale_type", mode_scale_type)
 	storeItem("mode_shift", mode_shift)
 	stored_mode_shift = mode_shift
+	PREV_SCALE_button.style('backgroundColor', 'rgb(240,240,240)')
 }
 // function go_to_scale_and_mode(){} // could do both at the same time for randomization?
 

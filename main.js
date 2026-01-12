@@ -100,6 +100,11 @@ let sheet_music_display_mode
 let default_sheet_music_display_mode = false
 let persistent_dots
 let default_persistent_dots_state = false
+let syncopation_interval, syncopation_factor
+let default_syncopation_interval = 0
+let default_syncopation_factor = 0.25
+let syncopation_control_active
+let default_syncopation_control_active = false
 
 // Sequence display long-press state
 let seq_press_start = 0
@@ -117,7 +122,7 @@ let density
 let midi_output_device = null
 let main_output_channel = 0
 let drone_output_channel = 0
-let midi_output_device_count = 0
+let midi_output_device_count = -1
 let midi_output_enabled = false
 let midi_device_max_name_length = 0
 
@@ -189,6 +194,9 @@ function preload() {
 	}
 
 	swing_factor = lookup_item("swing_factor", default_swing_factor)
+	syncopation_interval = lookup_item("syncopation_interval", default_syncopation_interval)
+	syncopation_factor = lookup_item("syncopation_factor", default_syncopation_factor)
+	syncopation_control_active = lookup_item("syncopation_control_active", default_syncopation_control_active)
 	base_tempo = lookup_item("base_tempo", default_base_tempo)
 	tempo_multiplier = lookup_item("tempo_multiplier", default_tempo_multiplier)
 	tempo = base_tempo * tempo_multiplier
@@ -244,7 +252,7 @@ function lookup_item(lookup_key, default_value){
 	return lookup_data
 }
 
-const midi_device_list = []
+let midi_device_list = []
 // const main_midi_channels_list = []
 // const drone_midi_channels_list = []
 
@@ -255,12 +263,18 @@ function setup(initial=true) {
 		H = window.innerHeight
 		mobile = true
 		U = min(int(W / 30), int(H / 16))
-		display_waveform = false
+		if (W > H){ // don't allow in landscape mode where there's no room
+			display_waveform = false
+			stored_display_waveform_state = false
+		}
 	}
 	else{ 
 		W = window.innerWidth
 		H = window.innerHeight
-		if (W < 1000) display_waveform = false
+		// if (W < 1000){
+		// 	display_waveform = false
+		// 	stored_display_waveform_state = false
+		// } 
 		mobile = false
 		U = min(int(W / 31), int(H / 17))
 	}
@@ -318,32 +332,6 @@ function setup(initial=true) {
 	seq_display.ym = int((seq_display.y0 + seq_display.y1) / 2)
 
 	if(initial){
-		WebMidi
-			.enable()
-			.then(onEnabled)
-			.catch(err => alert(err));
-
-		// Function triggered when WEBMIDI.js is ready
-		function onEnabled() {
-			push()
-			textSize(text_size2)
-			// Display available MIDI devices
-			if (WebMidi.outputs.length > 0) {
-				WebMidi.outputs.forEach((device, index) => {
-					midi_device_max_name_length = max(midi_device_max_name_length, textWidth(device.name))
-					if(midi_device_list.length == 0 || !midi_device_list.some(e => e.name === device.name)){
-						midi_device_list.push({ original_index: index, name: device.name })
-						// console.log(`${index}: ${device.name}`)
-					}
-					for(let i = 0; i < 128; i++){  // just in case a note or drone was left playing
-						device.sendNoteOff(i, {channels: [1,2]})
-					}
-					midi_device_list.sort((a, b) => a.name.localeCompare(b.name))
-				})
-				midi_output_device_count = WebMidi.outputs.length
-			}
-			pop()
-		}
 		createCanvas(W, H)
 		strokeCap(SQUARE)
 		chart = new fingering_chart(chart_x, chart_y)
@@ -394,25 +382,41 @@ function play_oscillator(note, freq=0, duration=0, start_time=0) {
 	playing = true
 	vol = min(nominal_vol, 1)
 	osc.amp(vol)
+	let midi_play_vol = 0
 	if(default_vol > 0){
 		note_start_time = ~~millis()
 		if (!osc_started) osc_started = true
 		if(duration > 0){
-			osc.play(freq, vol, start_time, duration) // for when playing a sequence
+			play_vol = vol
+			if(syncopation_interval){
+				if(chart.sequence_note_index % syncopation_interval == 0){
+					play_vol = min(1, play_vol * (1 + 2 * syncopation_factor))
+					if(midi_output_enabled) midi_play_vol = min(1, play_vol * (1 + syncopation_factor))
+				} 
+				else{
+					play_vol = max(0.1, play_vol * (1 - 2 * syncopation_factor))
+					if(midi_output_enabled) max(0.1, play_vol * (1 - syncopation_factor))
+				} 
+				// osc.amp(play_vol)
+			} 
+			// console.log(play_vol)
+			// console.log(chart.sequence_note_index, chart.sequence_note_index % syncopation_interval == 0)
+			osc.play(freq, play_vol, start_time, duration) // for when playing a sequence
 			// console.log(start_time, duration)
 		} 
 		else osc.triggerAttack(freq, vol)
 	}
 	current_frequency = freq
-	if(midi_output_enabled && note.midi_note != current_midi_note_on) send_midi_note(note, true, duration, start_time)
+	if(midi_output_enabled && note.midi_note != current_midi_note_on) send_midi_note(note, true, duration, midi_play_vol)
 }
 
 var current_midi_note_on = -1
-function send_midi_note(note, on = true, duration = 0){
+function send_midi_note(note, on = true, duration = 0, play_vol = 0){
 	if(!midi_output_device || !note.midi_note) return
 	if(on){
 		current_midi_note_on = note.midi_note
-		main_output_channel.playNote(note.midi_note, {attack: vol, duration: duration * 1000})
+		vol2 = play_vol ? play_vol : vol
+		main_output_channel.playNote(note.midi_note, {attack: vol2, duration: duration * 1000})
 	}
 	else if(current_midi_note_on > -1){
 		main_output_channel.sendNoteOff(note.midi_note)
@@ -598,11 +602,13 @@ function condensed_notes_toggle(){
 	if(condensed_notes){
 		if(hide_fingering) document.getElementById("COND").innerHTML = '|||'
 		else document.getElementById("COND").innerHTML = '⁞⁞⁞'
-	}
+		if(save_confirm_shown) SAVE_CHART_COMPACT_button.show()
+		}
 	else{
 		if(hide_fingering) document.getElementById("COND").innerHTML = '||||||'
 		else document.getElementById("COND").innerHTML = '⁞⁞⁞⁞⁞⁞'
 		COND_button.style('backgroundColor', 'rgb(240,240,240)')
+		if(save_confirm_shown) SAVE_CHART_COMPACT_button.hide()
 	}
 	update_chart = true
 	set_stylo_mode()
@@ -1011,8 +1017,8 @@ function generate_info_display(){
 	}
 	else if(note_count == 12) scale_str = 'The Chromatic Scale'
 	else scale_str = str(note_count) + '-TET'
-	const x_pos = U * 0.25
-	const y_pos2 = U * 0.15
+	const x_pos = int(U * 0.25)
+	const y_pos2 = int(U * 0.15)
 	const x_pos2 = y_pos2
 	push()
 		if(mode_shift > 0) fill(140, 80, 0)
@@ -1142,6 +1148,7 @@ let sequence_y_half = 0
 let sequence_previous_y_half = 0
 let sequence_x_third = 0
 let sequence_change_primed = false
+let syncopation_change_primed = false
 let sequence_control_change_primed = false
 let sequence_display_toggle_primed = false
 let persistent_dots_toggle_primed = false
@@ -1150,8 +1157,11 @@ let direction_change_tracking_left = 0
 let y_move_dir = 0
 let staff_toggle_direction = 0
 let toggle_button
+let touch_mode = 0
 
 function input_pressed(){
+	touch_mode = touches.length
+		
 	not_dragged = true
 	x_start = mouseX
 	y_start = mouseY
@@ -1162,7 +1172,7 @@ function input_pressed(){
 		return
 	} 
 
-	if(mouseY > chart_hy && mouseX > chart_x * 1.02 && W > 1000){
+	if(mouseY > chart_hy * 1.02 && mouseX > chart_x * 1.02){
 		toggle_waveform_display()
 		return
 	}
@@ -1170,10 +1180,15 @@ function input_pressed(){
 	sequence_y_half = in_seq_display()
 	if(sequence_y_half){
 		seq_press_start = ~~millis()
-		sequence_display_toggle_primed = true
-		sequence_change_primed = sequence_y_half
-		sequence_previous_y_half = sequence_y_half
-		sequence_control_change_primed = chart.playing_scale && sequence_change_primed == 2
+		if((sequence_slider_shown && syncopation_control_active) || (touch_mode == 2 || mouseButton == RIGHT)){
+			syncopation_change_primed = true
+		} 
+		else{
+			sequence_display_toggle_primed = true
+			sequence_change_primed = sequence_y_half
+			sequence_previous_y_half = sequence_y_half
+			sequence_control_change_primed = chart.playing_scale && sequence_change_primed == 2
+		}
 		return
 	}
 	else if(in_pattern_representation() && note_count == 12){
@@ -1217,26 +1232,54 @@ function input_dragged(){
 	if(x_dragged || y_dragged) sequence_display_toggle_primed = false
 	let x_move_dir = 0
 	
-	if(sequence_control_change_primed && x_dragged){
-		sequence_change_primed = false
+	if(syncopation_change_primed){
+		if(x_dragged){
+			let current_x_third = in_seq_display(false)
+			if(current_x_third != sequence_x_third){
+				if(current_x_third == 0) syncopation_interval = 0
+				else syncopation_interval = current_x_third + 1
+				sequence_x_third = current_x_third
+				storeItem("syncopation_interval", syncopation_interval)
+				chart.generate_sequence_display()
+			}
+		}
+		if(y_dragged){
+			// y_start += y_move/abs(y_move) * U * 0.5
+			// const y_move2 = int(mouseY - y_start)
+			// syncopation_factor = round(constrain(syncopation_factor + y_move2 / (2 * U), -0.25, 0.25), 2)
+			sequence_y_half = in_seq_display()
+			if (sequence_y_half && sequence_y_half !== sequence_previous_y_half){
+				sequence_previous_y_half = sequence_y_half
+				syncopation_factor *= -1
+				storeItem("syncopation_factor", syncopation_factor)
+				chart.generate_sequence_display()
+			}
+		}
+		return
+	}
+	else if(sequence_control_change_primed && x_dragged){
 		let current_x_third = in_seq_display(false)
 		if(current_x_third != sequence_x_third){
-			const temp_dir_override = dir_override
-			if(current_x_third == 3){
-				if(dir_override != 1)	direction_mode_switch(1)
+			if(sequence_control_change_primed) {
+				sequence_change_primed = false
+				const temp_dir_override = dir_override
+				if(current_x_third == 3){
+					if(dir_override != 1)	direction_mode_switch(1)
+					}
+				else if(current_x_third == 2){
+					if(dir_override != 2)	direction_mode_switch(2)
+					}
+				else if(current_x_third == 1){
+					if(dir_override != -1) direction_mode_switch(-1)
+					}
+				else if(current_x_third == 0){
+					if(dir_override != 0) direction_mode_switch(0)
+					}
+				sequence_x_third = current_x_third
+				if(dir_override != temp_dir_override) return
 			}
-			else if(current_x_third == 2){
-				if(dir_override != 2)	direction_mode_switch(2)
-			}
-			else if(current_x_third == 1){
-				if(dir_override != -1) direction_mode_switch(-1)
-			}
-			else if(current_x_third == 0){
-				if(dir_override != 0) direction_mode_switch(0)
-			}
-			sequence_x_third = current_x_third
-			if(dir_override != temp_dir_override) return
 		}
+		return
 	}
 	else if(sequence_change_primed){
 		const x_step = U * 1.15
@@ -1421,6 +1464,7 @@ function input_released() {
 	effects_controls_primed = false
 	sequence_change_primed = false
 	sequence_control_change_primed = false
+	syncopation_change_primed = false
 	sheet_music_display_toggle_primed = false
 	if(persistent_dots_toggle_primed && not_dragged){
 		persistent_dots = !persistent_dots
@@ -1454,8 +1498,9 @@ function input_released() {
 }
 
 let saved_chart_graphics = false
+let extra_condensed = false
 
-async function save_chart(){
+async function save_chart(compact = false){
 	if(note_count != 12) return
 	// let alt_chart1 = (instrument_name.includes('Trumpet') && condensed_notes)
 	let rows = 4
@@ -1517,6 +1562,7 @@ async function save_chart(){
 		update_key()
 	}
 
+	if(compact) extra_condensed = true
 	let key_index
 	let W1 = 0
 	let W2 = 0
@@ -1596,7 +1642,8 @@ async function save_chart(){
 	full_chart.fill(255)
 	full_chart.rect(0,0, W2, (footer_H - margin/2))
 	full_chart.fill(0)
-	full_chart.textSize(footer_H * 0.75)
+	let text_scale_factor = 0.75
+	full_chart.textSize(footer_H * text_scale_factor)
 	
 	if(scale_pattern.length == 12){
 		save_str = scale_name
@@ -1604,17 +1651,40 @@ async function save_chart(){
 		full_chart.text(save_str, U * 0.5, text_pos)
 		full_chart.textAlign(RIGHT,CENTER)
 		full_chart.text(instrument_name, W2 - U * 0.5, text_pos)
-	} 
+	}
 	else{
 		let pattern_representation = better_get(int(U * 1.5), int(U * 0.9), WP, HP)
-		full_chart.textAlign(RIGHT,CENTER)
-		full_chart.text(save_str, w2 - WP * 0.8, text_pos)
-		full_chart.image(pattern_representation, int(w2 - WP * 0.5), int((footer_H - (HP + margin)) / 2), WP, HP)
-		full_chart.textAlign(LEFT,CENTER)
-		full_chart.text(instrument_name, w2 + WP * 0.8, text_pos)
+		if(compact){
+			let text_width_scale = full_chart.textWidth(save_str)
+			let text_width_instrument = full_chart.textWidth(instrument_name)
+			const pattern_margin = 2 * U + WP
+			let total_width = pattern_margin + text_width_scale + text_width_instrument
+			
+			while(total_width > W2){
+				text_scale_factor *= 0.95
+				full_chart.textSize(footer_H * text_scale_factor)
+				text_width_scale = full_chart.textWidth(save_str)
+				text_width_instrument = full_chart.textWidth(instrument_name)
+				total_width = pattern_margin + text_width_scale + text_width_instrument
+			}
+			const pattern_position = U + text_width_scale + (W2 - total_width) / 2
+			full_chart.textAlign(LEFT,CENTER)
+			full_chart.text(save_str, U * 0.5, text_pos)
+			full_chart.image(pattern_representation, pattern_position, int((footer_H - (HP + margin)) / 2), WP, HP)
+			full_chart.textAlign(RIGHT,CENTER)
+			full_chart.text(instrument_name, W2 - U * 0.5, text_pos)
+		}
+		else {
+			full_chart.textAlign(RIGHT,CENTER)
+			full_chart.text(save_str, w2 - WP * 0.8, text_pos)
+			full_chart.image(pattern_representation, int(w2 - WP * 0.5), int((footer_H - (HP + margin)) / 2), WP, HP)
+			full_chart.textAlign(LEFT,CENTER)
+			full_chart.text(instrument_name, w2 + WP * 0.8, text_pos)
+		}
 	}
-	let condensed_str = condensed_notes? ' - condensed' : ''
-	save(full_chart, instrument_name + ' - ' + save_str + condensed_str + ".png")
+	let condensed_str = compact ? ' - compact' : condensed_notes? ' - condensed' : ''
+	save(full_chart, instrument_name + ' - ' + save_str + condensed_str + ".jpg")
+	extra_condensed = false
 }
 
 function better_get(x,y,w,h){ // Credit to Dave Pagurek for this miracle function
@@ -1672,7 +1742,7 @@ function next_scale(){
 function keyPressed() {
 	const key_L = key.toLowerCase()
 	if(keyIsDown(SHIFT)){
-		if(key_L === 's') save_chart()	
+		if(key_L === 's') save_chart(false)	
 		else if (key_L === 'q') clearStorage()
 		else if (key_L === 'l'){
 			console.log(getItem("scale_name") + ', ' + getItem("mode_shift")  + ', ' + getItem("previous_instrument_name") + ', ' + getItem("instrument_name"))
@@ -1690,6 +1760,7 @@ function keyPressed() {
 		else if (key_L === 'l') toggle_loop_mode()
 		else if (key_L === ' ') toggle_pause()
 		else if (key_L === 'm')	mode_mode_switch()
+		// else if (key_L === 's')	syncopation_control = !syncopation_control
 		else if (key_L === 'w') toggle_waveform_display()
 		else{
 			const num = ~~key
@@ -1769,7 +1840,9 @@ function in_effects_control_area(x = mouseX, y = mouseY){
 	return (x <= chart_x && 3 * U <= y && y <= min(H - U, 16.5 * U))
 }
 
-// returns 1 if in upper half of sequence display area, 2 if in lower.
+// returns 0 if outside
+// if vertical, returns 1 if in upper half of sequence display area, 2 if in lower
+// otherwise 1, 2, 3, for the horizontal thirds
 function in_seq_display(vertical = true, x = mouseX, y = mouseY){
 	if(vol_slider_shown || drone_vol_slider_shown || tempo_slider_shown || 
 		tuning_slider_shown || save_confirm_shown){

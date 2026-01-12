@@ -20,6 +20,8 @@ let note_index, note_index_temp
 let midi_pitch_bend = 0
 let wait_time, elapsed_time, wait_ratio
 let play_clock = 0
+let bend_reversal = false
+let bend_min_y, bend_max_y, indicator_drawn
 
 const seq_display = {}
 
@@ -128,7 +130,8 @@ class fingering_chart {
 				}
 				let COL = (f % scale_pattern.length == 0) ? [100, 230, 0, 200] : [20, 180, 230, 200]
 				stroke(COL)
-				strokeWeight(seq_display.diam2)
+				const diam_factor = syncopation_interval ? this.sequence_note_index % syncopation_interval == 0 ? 1 + syncopation_factor : 1 - syncopation_factor : 1
+				strokeWeight(seq_display.diam2 * diam_factor)
 				line(from_x, seq_display.y, x_current2, seq_display.y) // note playing progress line
 			}
 			pop()
@@ -188,7 +191,7 @@ class fingering_chart {
 		playing_note = this.scale_notes[min(max(index2 + this.index_offset, 0), this.scale_notes.length - 1)]
 		if(playing_note){
 			frequency = playing_note.frequency
-			const rest_time = min(this.interval_time * 0.2, 3)
+			const rest_time = min(this.interval_time * 0.05, 3)
 			const lead_time = 0 // min(this.interval_time * 0.5, 2)
 			const remaining_time = this.interval_time * (1 - wait_ratio < 1 ? wait_ratio : 0) - rest_time
 			// console.log('play', this.interval_time, rest_time, wait_ratio, remaining_time)
@@ -417,10 +420,8 @@ class fingering_chart {
 		note_span = null
 		this.notes = []
 		this.all_notes = []
-		if (!condensed_notes) this.width_factor = 1
-		else this.width_factor = min(2, 28 / this.on_notes)
-		// else this.width_factor = min(2, 28/(Math.ceil(this.on_notes/2)*2))
-		// else this.width_factor = min(2, Math.floor(28/this.on_notes*4)/4)
+		if (condensed_notes && !extra_condensed) this.width_factor = min(2.15, 28 / this.on_notes) 
+		else this.width_factor = 1
 		const w = int(U * this.width_factor)
 		let x = 0
 		let y = 0
@@ -588,8 +589,26 @@ class fingering_chart {
 							const Y_move = mouseY - starting_y
 							const bend_up = Y_move < 0
 							const pitch_bend_factor = Y_move / this.note_height * 3
-
-							pitch_bend_amount = min(abs(pitch_bend_factor), 1) * (bend_up? note.freq_bend_above : note.freq_bend_below)
+							const pitch_bend_factor2 = min(abs(pitch_bend_factor), 1)
+							let draw_indicator = false
+							if(bend_up){
+								bend_min_y = min(mouseY, bend_min_y)
+								if(mouseY > bend_min_y + U * 0.1) draw_indicator = true
+							}
+							else{
+								bend_max_y = max(mouseY, bend_max_y)
+								if(mouseY < bend_max_y - U * 0.1) draw_indicator = true
+							}
+							if(!indicator_drawn && draw_indicator){
+								indicator_drawn = true
+								push()
+								stroke(255, 50)
+								strokeCap(ROUND)
+								strokeWeight(max(1, note.w / 15))
+								line(note.x + note.w * 0.3, starting_y, note.x + note.w * 0.7, starting_y)
+								pop()
+							}
+							pitch_bend_amount = pitch_bend_factor2 * (bend_up? note.freq_bend_above : note.freq_bend_below)
 							frequency = note.frequency + pitch_bend_amount
 							play_oscillator(note, frequency)
 							redraw_waveform = true
@@ -602,7 +621,10 @@ class fingering_chart {
 						else {
 							if(abs(mouseY - starting_y) > this.bend_threshold){
 								starting_y = mouseY
+								bend_min_y = mouseY
+								bend_max_y = mouseY
 								bend_started = true
+								indicator_drawn = false
 							}
 						} 
 					}
@@ -937,7 +959,7 @@ class fingering_chart {
 			const y_step = (inner_y1 - inner_y0) / f_span
 			const diam = min(x_step * 1.5, y_step * 1.2, 1.8 * M) * 0.9
 			seq_display.diam1 = diam
-			seq_display.diam2 = diam * 0.75
+			seq_display.diam2 = diam * 0.66
     	const wt2 = min(5 * SF * 15 * U / 350, diam * 0.5)
 			seq_display.wt2 = wt2
 			let x = inner_x0
@@ -1000,21 +1022,7 @@ class fingering_chart {
 			// vertical grid lines
 			while(x <= inner_x1 + M) {
 				final_x = x
-				const f = this.notes_sequence[min(sequence_note_count, this.notes_sequence.length - 1)]
-				const y = map(f, max_f, min_f, inner_y0, inner_y1)
 				line(x, inner_y0, x, inner_y1)
-				push()
-				if (f % scale_pattern.length == 0) {
-					fill(col3)
-					y_octaves.push(y)
-				}
-				else{
-					fill(col4)
-				}
-				noStroke()
-				circle(x, y, seq_display.diam2)
-				circle(x, y, diam)
-				pop()
 				if(swing_factor){
 					if(sequence_note_count % 2 == 0) x += x_step1
 					else x += x_step2
@@ -1027,7 +1035,30 @@ class fingering_chart {
 			for (let y = inner_y0; y <= inner_y1 + 1; y += y_step) {
 				line(inner_x0, y, final_x, y)
 			}
-			
+
+			// note indicator circles
+			noStroke()
+			fill(col4)
+			x = inner_x0
+			sequence_note_count = 0
+			while(x <= inner_x1 + M) {
+				const f = this.notes_sequence[min(sequence_note_count, this.notes_sequence.length - 1)]
+				const y = map(f, max_f, min_f, inner_y0, inner_y1)
+				if (f % scale_pattern.length == 0) y_octaves.push(y)
+				push()
+				if (f % scale_pattern.length == 0) fill(col3)
+				const diam_factor = syncopation_interval ? sequence_note_count % syncopation_interval == 0 ? 1 + syncopation_factor : 1 - syncopation_factor : 1
+				circle(x, y, seq_display.diam2 * diam_factor)
+				circle(x, y, diam * diam_factor)
+				pop()
+				if(swing_factor){
+					if(sequence_note_count % 2 == 0) x += x_step1
+					else x += x_step2
+				}
+				else x += x_step
+				sequence_note_count++
+			}
+
 			// octave lines highlights
 			stroke(col3)
 			strokeWeight(wt2)
@@ -1076,7 +1107,8 @@ class fingering_chart {
 			}
 			fill(COL)
 			noStroke()
-			circle(seq_display.x, seq_display.y, seq_display.diam1)
+			const diam_factor = syncopation_interval ? playing_note_index % syncopation_interval == 0 ? 1 + syncopation_factor : 1 - syncopation_factor : 1
+			circle(seq_display.x, seq_display.y, seq_display.diam1 * diam_factor)
 			pop()
 		}
 	}
